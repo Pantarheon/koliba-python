@@ -250,6 +250,14 @@ KLBO kolibaAngleCosine(klbo(Angle,self)) {
 	return PyFloat_FromDouble(KOLIBA_AngleCosine(&self->a));
 }
 
+KLBO kolibaAngleMonocycleSine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AngleMonocycleSine(&self->a));
+}
+
+KLBO kolibaAngleMonocycleCosine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AngleMonocycleCosine(&self->a));
+}
+
 KLBO kolibaAngleMonocyclical(klbo(Angle,self)) {
 	return PyFloat_FromDouble(KOLIBA_MonocyclicalAngle(&self->a));
 }
@@ -304,6 +312,58 @@ KLBO kolibaAngleFactorHavercosine(klbo(Angle,self), PyObject *args) {
 
 	if (!PyArg_ParseTuple(args, "d", &factor)) return NULL;
 	return PyFloat_FromDouble(KOLIBA_AngleFactorHavercosine((&self->a), factor));
+}
+
+KLBO kolibaAngleMonocycleVersine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AngleMonocycleVersine(&self->a));
+}
+
+KLBO kolibaAngleMonocycleHaversine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AngleMonocycleHaversine(&self->a));
+}
+
+KLBO kolibaAngleMonocyclePolsine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AngleMonocyclePolsine(&self->a));
+}
+
+KLBO kolibaAngleMonocycleVercosine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AngleMonocycleVercosine(&self->a));
+}
+
+KLBO kolibaAngleMonocycleHavercosine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AngleMonocycleHavercosine(&self->a));
+}
+
+KLBO kolibaAngleMonocyclePolcosine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AngleMonocyclePolcosine(&self->a));
+}
+
+KLBO kolibaAngleFactorMonocycleVersine(klbo(Angle,self), PyObject *args) {
+	double factor;
+
+	if (!PyArg_ParseTuple(args, "d", &factor)) return NULL;
+	return PyFloat_FromDouble(KOLIBA_AngleFactorMonocycleVersine((&self->a), factor));
+}
+
+KLBO kolibaAngleFactorMonocycleHaversine(klbo(Angle,self), PyObject *args) {
+	double factor;
+
+	if (!PyArg_ParseTuple(args, "d", &factor)) return NULL;
+	return PyFloat_FromDouble(KOLIBA_AngleFactorHaversine((&self->a), factor));
+}
+
+KLBO kolibaAngleFactorMonocycleVercosine(klbo(Angle,self), PyObject *args) {
+	double factor;
+
+	if (!PyArg_ParseTuple(args, "d", &factor)) return NULL;
+	return PyFloat_FromDouble(KOLIBA_AngleFactorMonocycleVercosine((&self->a), factor));
+}
+
+KLBO kolibaAngleFactorMonocycleHavercosine(klbo(Angle,self), PyObject *args) {
+	double factor;
+
+	if (!PyArg_ParseTuple(args, "d", &factor)) return NULL;
+	return PyFloat_FromDouble(KOLIBA_AngleFactorMonocycleHavercosine((&self->a), factor));
 }
 
 KLBO kolibaAngleNormalize(klbo(Angle,self)) {
@@ -519,6 +579,8 @@ static PyNumberMethods kolibaAngleAsNumber = {
 static PyMethodDef kolibaAngleMethods[] = {
 	{"sin", (PyCFunction)kolibaAngleSine, METH_NOARGS, "Return the sine of the angle"},
 	{"cos", (PyCFunction)kolibaAngleCosine, METH_NOARGS, "Return the cosine of the angle"},
+	{"monosin", (PyCFunction)kolibaAngleMonocycleSine, METH_NOARGS, "Return the monocyclic sine of the angle"},
+	{"monocos", (PyCFunction)kolibaAngleMonocycleCosine, METH_NOARGS, "Return the monocyclic cosine of the angle"},
 	{"monocycle", (PyCFunction)kolibaAngleMonocyclical, METH_NOARGS, "Return the monocycle of the angle"},
 	{"versin", (PyCFunction)kolibaAngleVersine, METH_NOARGS, "Return the versine of the angle"},
 	{"haversin", (PyCFunction)kolibaAngleHaversine, METH_NOARGS, "Return the haversine of the angle"},
@@ -529,7 +591,17 @@ static PyMethodDef kolibaAngleMethods[] = {
 	{"fversin", (PyCFunction)kolibaAngleFactorVersine, METH_VARARGS, "Return the versine of a factor times the angle"},
 	{"fhaversin", (PyCFunction)kolibaAngleFactorHaversine, METH_VARARGS, "Return the haversine of a factor times the angle"},
 	{"fvercos", (PyCFunction)kolibaAngleFactorVercosine, METH_VARARGS, "Return the vercosine of a factor times the angle"},
-	{"fhavercos", (PyCFunction)kolibaAngleFactorHavercosine, METH_VARARGS, "Return the havercosine a factor times of the angle"},
+	{"fhavercos", (PyCFunction)kolibaAngleFactorHavercosine, METH_VARARGS, "Return the havercosine of a factor times the angle"},
+	{"monoversin", (PyCFunction)kolibaAngleMonocycleVersine, METH_NOARGS, "Return the monocyclic versine of the angle"},
+	{"monohaversin", (PyCFunction)kolibaAngleMonocycleHaversine, METH_NOARGS, "Return the monocyclic haversine of the angle"},
+	{"monopolsin", (PyCFunction)kolibaAngleMonocyclePolsine, METH_NOARGS, "Return the monocyclic polsine of the angle"},
+	{"monovercos", (PyCFunction)kolibaAngleMonocycleVercosine, METH_NOARGS, "Return the monocyclic vercosine of the angle"},
+	{"monohavercos", (PyCFunction)kolibaAngleMonocycleHavercosine, METH_NOARGS, "Return the monocyclic havercosine of the angle"},
+	{"monopolcos", (PyCFunction)kolibaAngleMonocyclePolcosine, METH_NOARGS, "Return the monocyclic polcosine of the angle"},
+	{"fmonoversin", (PyCFunction)kolibaAngleFactorMonocycleVersine, METH_VARARGS, "Return the monocyclic versine of a factor times the angle"},
+	{"fmonohaversin", (PyCFunction)kolibaAngleFactorMonocycleHaversine, METH_VARARGS, "Return the monocyclic haversine of a factor times the angle"},
+	{"fmonovercos", (PyCFunction)kolibaAngleFactorMonocycleVercosine, METH_VARARGS, "Return the monocyclic vercosine of a factor times the angle"},
+	{"fmonohavercos", (PyCFunction)kolibaAngleFactorMonocycleHavercosine, METH_VARARGS, "Return the monocyclic havercosine of a factor times the angle"},
 	{"normalize", (PyCFunction)kolibaAngleNormalize, METH_NOARGS, "Normalize the angle to the first turn"},
 	{NULL}
 };
