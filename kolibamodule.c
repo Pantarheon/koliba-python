@@ -1,4 +1,4 @@
-/*
+ /*
 
 	Python extension of koliba library.
 
@@ -46,6 +46,10 @@
 #include <Python.h>
 #include "structmember.h"
 
+/* Use a static version of libkoliba under Windows. */
+#ifdef _WIN32
+#define NOKLIBLIB
+#endif
 #include "koliba.h"
 
 #define DoubleConst(name,val)	PyDict_SetItemString(d, (const char *)name, o=PyFloat_FromDouble((double)val)); \
@@ -56,6 +60,7 @@
 #define klbnew(n)	static PyObject * koliba##n##New(PyTypeObject *type, PyObject *args, PyObject *kwds)
 #define klbinit(n)	static int koliba##n##Init(koliba##n##Object *self, PyObject *args, PyObject *kwds)
 #define	klbdealloc(n)	static void koliba##n##Dealloc(koliba##n##Object *self)
+#define isklbtype(n,o)	PyObject_TypeCheck(o,&koliba##n##Type)
 
 #define	klbgetset(n)	static PyGetSetDef koliba##n##GetSet[]
 
@@ -64,6 +69,20 @@ typedef struct {
 	PyObject_HEAD
 	KOLIBA_ANGLE a;
 } kolibaAngleObject;
+
+typedef struct {
+	kolibaAngleObject;
+	double radius;
+} kolibaArcObject;
+
+typedef struct {
+	kolibaArcObject;
+	double midpoint;
+	double exponent;	// This is "private"
+	int    frames;
+	int    frame;
+	bool   monocycle;
+} kolibaFrangleObject;
 
 static const char * const kau[] = {
 	"KAU_degrees",
@@ -123,6 +142,17 @@ static const char * const kqc[] = {
 	"KQC_amaranth"
 };
 
+static PyTypeObject kolibaAngleType;
+static PyTypeObject kolibaArcType;
+static PyTypeObject kolibaFrangleType;
+
+
+static int koliba_frangle_noset(char *property) {
+	PyErr_Format(PyExc_ValueError, "Frangle.%s is a read-only property (try setting the frame or frames instead))", property);
+	return -1;
+}
+
+
 klbdealloc(Angle) {
 	Py_TYPE(self)->tp_free((PyObject *)self);
 }
@@ -153,8 +183,9 @@ KLBO kolibaAngleGetDegrees(klbo(Angle,self), void *closure) {
 }
 
 static int kolibaAngleSetDegrees(klbo(Angle,self), PyObject *value, void *closure) {
+	if (isklbtype(Frangle,self)) return koliba_frangle_noset("degrees");
 	if (PyFloat_Check(value)) self->a.angle = PyFloat_AsDouble(value);
-	else if (PyLong_Check(value)) self->a.angle = (double)PyLong_AsLong(value);
+	else if (PyLong_Check(value)) self->a.angle = (double)PyLong_AsDouble(value);
 	else {
 		PyErr_SetString(PyExc_TypeError, "The angle must be a number in degrees");
 		return -1;
@@ -168,8 +199,9 @@ KLBO kolibaAngleGetRadians(klbo(Angle,self), void *closure) {
 }
 
 static int kolibaAngleSetRadians(klbo(Angle,self), PyObject *value, void *closure) {
+	if (isklbtype(Frangle,self)) return koliba_frangle_noset("radians");
 	if (PyFloat_Check(value)) self->a.angle = PyFloat_AsDouble(value);
-	else if (PyLong_Check(value)) self->a.angle = (double)PyLong_AsLong(value);
+	else if (PyLong_Check(value)) self->a.angle = (double)PyLong_AsDouble(value);
 	else {
 		PyErr_SetString(PyExc_TypeError, "The angle must be a number in radians");
 		return -1;
@@ -183,8 +215,9 @@ KLBO kolibaAngleGetTurns(klbo(Angle,self), void *closure) {
 }
 
 static int kolibaAngleSetTurns(klbo(Angle,self), PyObject *value, void *closure) {
+	if (isklbtype(Frangle,self)) return koliba_frangle_noset("turns");
 	if (PyFloat_Check(value)) self->a.angle = PyFloat_AsDouble(value);
-	else if (PyLong_Check(value)) self->a.angle = (double)PyLong_AsLong(value);
+	else if (PyLong_Check(value)) self->a.angle = (double)PyLong_AsDouble(value);
 	else {
 		PyErr_SetString(PyExc_TypeError, "The angle must be a number in turns");
 		return -1;
@@ -198,8 +231,9 @@ KLBO kolibaAngleGetPis(klbo(Angle,self), void *closure) {
 }
 
 static int kolibaAngleSetPis(klbo(Angle,self), PyObject *value, void *closure) {
+	if (isklbtype(Frangle,self)) return koliba_frangle_noset("pis");
 	if (PyFloat_Check(value)) self->a.angle = PyFloat_AsDouble(value);
-	else if (PyLong_Check(value)) self->a.angle = (double)PyLong_AsLong(value);
+	else if (PyLong_Check(value)) self->a.angle = (double)PyLong_AsDouble(value);
 	else {
 		PyErr_SetString(PyExc_TypeError, "The angle must be a number in pis");
 		return -1;
@@ -208,17 +242,295 @@ static int kolibaAngleSetPis(klbo(Angle,self), PyObject *value, void *closure) {
 	return 0;
 }
 
-KLBO kolibaAngleSine(klbo(Angle,self), void *closure) {
+KLBO kolibaAngleSine(klbo(Angle,self)) {
 	return PyFloat_FromDouble(KOLIBA_AngleSine(&self->a));
 }
 
-KLBO kolibaAngleCosine(klbo(Angle,self), void *closure) {
+KLBO kolibaAngleCosine(klbo(Angle,self)) {
 	return PyFloat_FromDouble(KOLIBA_AngleCosine(&self->a));
 }
+
+KLBO kolibaAngleMonocyclical(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_MonocyclicalAngle(&self->a));
+}
+
+KLBO kolibaAngleVersine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AngleVersine(&self->a));
+}
+
+KLBO kolibaAngleHaversine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AngleHaversine(&self->a));
+}
+
+KLBO kolibaAnglePolsine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AnglePolsine(&self->a));
+}
+
+KLBO kolibaAngleVercosine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AngleVercosine(&self->a));
+}
+
+KLBO kolibaAngleHavercosine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AngleHavercosine(&self->a));
+}
+
+KLBO kolibaAnglePolcosine(klbo(Angle,self)) {
+	return PyFloat_FromDouble(KOLIBA_AnglePolcosine(&self->a));
+}
+
+KLBO kolibaAngleFactorVersine(klbo(Angle,self), PyObject *args) {
+	double factor;
+
+	if (!PyArg_ParseTuple(args, "d", &factor)) return NULL;
+	return PyFloat_FromDouble(KOLIBA_AngleFactorVersine((&self->a), factor));
+}
+
+KLBO kolibaAngleFactorHaversine(klbo(Angle,self), PyObject *args) {
+	double factor;
+
+	if (!PyArg_ParseTuple(args, "d", &factor)) return NULL;
+	return PyFloat_FromDouble(KOLIBA_AngleFactorHaversine((&self->a), factor));
+}
+
+KLBO kolibaAngleFactorVercosine(klbo(Angle,self), PyObject *args) {
+	double factor;
+
+	if (!PyArg_ParseTuple(args, "d", &factor)) return NULL;
+	return PyFloat_FromDouble(KOLIBA_AngleFactorVercosine((&self->a), factor));
+}
+
+KLBO kolibaAngleFactorHavercosine(klbo(Angle,self), PyObject *args) {
+	double factor;
+
+	if (!PyArg_ParseTuple(args, "d", &factor)) return NULL;
+	return PyFloat_FromDouble(KOLIBA_AngleFactorHavercosine((&self->a), factor));
+}
+
+KLBO kolibaAngleNormalize(klbo(Angle,self)) {
+	if (KOLIBA_AngleNormalize(&self->a) == NULL) return NULL;
+	Py_RETURN_NONE;
+}
+
+KLBO kolibaAngleAdd(PyObject *augmend, PyObject *addend) {
+	if ((isklbtype(Angle, augmend)) && (!isklbtype(Frangle, augmend)) && (isklbtype(Angle, addend))) {
+		PyObject *sum = kolibaAngleNew((PyTypeObject*)PyObject_Type(augmend), NULL, NULL);
+		KOLIBA_AngleAdd(&((kolibaAngleObject *)sum)->a, &((kolibaAngleObject *)augmend)->a, &((kolibaAngleObject *)addend)->a);
+		if (isklbtype(Arc, augmend)) ((kolibaArcObject *)sum)->radius = ((kolibaArcObject *)augmend)->radius;
+		return sum;
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+KLBO kolibaAngleInPlaceAdd(PyObject *augmend, PyObject *addend) {
+	if ((isklbtype(Angle, augmend)) && (!isklbtype(Frangle, augmend)) && (isklbtype(Angle, addend))) {
+		Py_INCREF(augmend);
+		KOLIBA_AngleAdd(&((kolibaAngleObject *)augmend)->a, &((kolibaAngleObject *)augmend)->a, &((kolibaAngleObject *)addend)->a);
+		return augmend;
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+KLBO kolibaAngleSubtract(PyObject *minuend, PyObject *subtrahend) {
+	if ((isklbtype(Angle, minuend)) && (!isklbtype(Frangle, minuend)) && (isklbtype(Angle, subtrahend))) {
+		PyObject *difference = kolibaAngleNew((PyTypeObject*)PyObject_Type(minuend), NULL, NULL);
+		KOLIBA_AngleSubtract(&((kolibaAngleObject *)difference)->a, &((kolibaAngleObject *)minuend)->a, &((kolibaAngleObject *)subtrahend)->a);
+		if (isklbtype(Arc, minuend)) ((kolibaArcObject *)difference)->radius = ((kolibaArcObject *)minuend)->radius;
+		return difference;
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+KLBO kolibaAngleInPlaceSubtract(PyObject *minuend, PyObject *subtrahend) {
+	if ((isklbtype(Angle, minuend)) && (!isklbtype(Frangle, minuend)) && (isklbtype(Angle, subtrahend))) {
+		Py_INCREF(minuend);
+		KOLIBA_AngleSubtract(&((kolibaAngleObject *)minuend)->a, &((kolibaAngleObject *)minuend)->a, &((kolibaAngleObject *)subtrahend)->a);
+		return minuend;
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+KLBO koliba_angle_multiply(kolibaAngleObject *multiplicand, PyObject *multiplier) {
+	double factor;
+	PyObject *result;
+	if (isklbtype(Frangle, multiplicand)) {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+	if (PyFloat_Check(multiplier)) factor = PyFloat_AsDouble(multiplier);
+	else if (PyLong_Check(multiplier)) factor = PyLong_AsDouble(multiplier);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+	result = kolibaAngleNew((PyTypeObject*)PyObject_Type((PyObject*)multiplicand), NULL, NULL);
+	KOLIBA_AngleMultiply(&((kolibaAngleObject *)result)->a, &multiplicand->a, factor);
+	if (isklbtype(Arc, result)) ((kolibaArcObject *)result)->radius = ((kolibaArcObject *)multiplicand)->radius;
+	return result;
+}
+
+KLBO kolibaAngleMultiply(PyObject *multiplicand, PyObject *multiplier) {
+		if (isklbtype(Angle, multiplicand)) 
+			return koliba_angle_multiply((kolibaAngleObject *)multiplicand, multiplier);
+		else if (isklbtype(Angle, multiplier))
+			return koliba_angle_multiply((kolibaAngleObject *)multiplier, multiplicand);
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+KLBO kolibaAngleInPlaceMultiply(PyObject *multiplicand, PyObject *multiplier) {
+	double factor;
+
+	if ((!isklbtype(Frangle, multiplicand)) && isklbtype(Angle, multiplicand)) {
+		if (PyFloat_Check(multiplier)) factor = PyFloat_AsDouble(multiplier);
+		else if (PyLong_Check(multiplier)) factor = PyLong_AsDouble(multiplier);
+		else {
+			Py_RETURN_NOTIMPLEMENTED;
+		}
+		Py_INCREF(multiplicand);
+		KOLIBA_AngleMultiply(&((kolibaAngleObject *)multiplicand)->a, &((kolibaAngleObject *)multiplicand)->a, factor);
+		return multiplicand;
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+KLBO koliba_angle_power(PyObject *base, double exponent, PyObject *normalize, bool inplace) {
+	PyObject *power;
+	bool normal;
+
+	if ((!isklbtype(Frangle, base)) && isklbtype(Angle, base)) {
+		if (normalize == Py_None) normal = true;
+		else if (PyBool_Check(normalize)) normal = (normalize == Py_True);
+		else if (PyLong_Check(normalize)) normal = (PyLong_AsLong(normalize) != 0);
+		else if (PyFloat_Check(normalize)) normal = (PyFloat_AsDouble(normalize) != 0.0);
+		else {Py_RETURN_NOTIMPLEMENTED;}
+		power = (inplace) ? base : kolibaAngleNew((PyTypeObject*)PyObject_Type((PyObject*)base), NULL, NULL);
+		KOLIBA_AnglePower(&((kolibaAngleObject *)power)->a, &((kolibaAngleObject *)base)->a, exponent, normal);
+		if (inplace) {
+			Py_INCREF(power);
+		}
+		else {
+			if (isklbtype(Arc, power)) ((kolibaArcObject *)power)->radius = ((kolibaArcObject *)base)->radius;
+		}
+		return power;
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+KLBO kolibaAnglePower(PyObject *base, PyObject *exponent, PyObject *normalize) {
+	if (PyFloat_Check(exponent))
+		return koliba_angle_power(base, PyFloat_AsDouble(exponent), normalize, false);
+	else if (PyLong_Check(exponent))
+		return koliba_angle_power(base, PyLong_AsDouble(exponent), normalize, false);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+}
+
+KLBO kolibaInPlaceAnglePower(PyObject *base, PyObject *exponent, PyObject *normalize) {
+	if (PyFloat_Check(exponent))
+		return koliba_angle_power(base, PyFloat_AsDouble(exponent), normalize, true);
+	else if (PyLong_Check(exponent))
+		return koliba_angle_power(base, PyLong_AsDouble(exponent), normalize, true);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+}
+
+KLBO koliba_angle_divide(PyObject *dividend, double divisor, bool floored, bool inplace) {
+	PyObject *result;
+	if (!isklbtype(Frangle, dividend)) {
+		if (divisor == 0.0) {
+			PyErr_Format(PyExc_ValueError, "The divisor must not be zero");
+			return NULL;
+		}
+		if (isklbtype(Angle, dividend)) {
+			result = (inplace) ? dividend : kolibaAngleNew((PyTypeObject*)PyObject_Type((PyObject*)dividend), NULL, NULL);
+			KOLIBA_AngleDivide(&((kolibaAngleObject *)result)->a, &((kolibaAngleObject *)dividend)->a, divisor, floored);
+			if (inplace) {
+				Py_INCREF(dividend);
+			}
+			else {
+				if (isklbtype(Arc, result)) ((kolibaArcObject *)result)->radius = ((kolibaArcObject *)dividend)->radius;
+			}
+			return result;
+		}
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+KLBO kolibaAngleTrueDivide(PyObject *dividend, PyObject *divisor) {
+	if (PyFloat_Check(divisor))
+		return koliba_angle_divide(dividend, PyFloat_AsDouble(divisor), false, false);
+	else if (PyLong_Check(divisor))
+		return koliba_angle_divide(dividend, PyLong_AsDouble(divisor), false, false);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+}
+
+KLBO kolibaAngleInPlaceTrueDivide(PyObject *dividend, PyObject *divisor) {
+	if (PyFloat_Check(divisor))
+		return koliba_angle_divide(dividend, PyFloat_AsDouble(divisor), false, true);
+	else if (PyLong_Check(divisor))
+		return koliba_angle_divide(dividend, PyLong_AsDouble(divisor), false, true);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+}
+
+KLBO kolibaAngleFloorDivide(PyObject *dividend, PyObject *divisor) {
+	if (PyFloat_Check(divisor))
+		return koliba_angle_divide(dividend, PyFloat_AsDouble(divisor), true, false);
+	else if (PyLong_Check(divisor))
+		return koliba_angle_divide(dividend, PyLong_AsDouble(divisor), true, false);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+}
+
+KLBO kolibaAngleInPlaceFloorDivide(PyObject *dividend, PyObject *divisor) {
+	if (PyFloat_Check(divisor))
+		return koliba_angle_divide(dividend, PyFloat_AsDouble(divisor), true, true);
+	else if (PyLong_Check(divisor))
+		return koliba_angle_divide(dividend, PyLong_AsDouble(divisor), true, true);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+}
+
+KLBO kolibaAngleRichCompare(PyObject *self, PyObject *cosi, int op) {
+	if (isklbtype(Angle, cosi)) {
+		Py_RETURN_RICHCOMPARE(KOLIBA_AngleDegrees(&((kolibaAngleObject *)self)->a), KOLIBA_AngleDegrees(&((kolibaAngleObject *)cosi)->a), op);
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+static PyNumberMethods kolibaAngleAsNumber = {
+	.nb_add = kolibaAngleAdd,
+	.nb_inplace_add = kolibaAngleInPlaceAdd,
+	.nb_subtract = kolibaAngleSubtract,
+	.nb_inplace_subtract = kolibaAngleInPlaceSubtract,
+	.nb_multiply = kolibaAngleMultiply,
+	.nb_inplace_multiply = kolibaAngleInPlaceMultiply,
+	.nb_true_divide = kolibaAngleTrueDivide,
+	.nb_inplace_true_divide = kolibaAngleInPlaceTrueDivide,
+	.nb_floor_divide = kolibaAngleFloorDivide,
+	.nb_inplace_floor_divide = kolibaAngleInPlaceFloorDivide,
+	.nb_power = kolibaAnglePower,
+};
 
 static PyMethodDef kolibaAngleMethods[] = {
 	{"sin", (PyCFunction)kolibaAngleSine, METH_NOARGS, "Return the sine of the angle"},
 	{"cos", (PyCFunction)kolibaAngleCosine, METH_NOARGS, "Return the cosine of the angle"},
+	{"monocycle", (PyCFunction)kolibaAngleMonocyclical, METH_NOARGS, "Return the monocycle of the angle"},
+	{"versin", (PyCFunction)kolibaAngleVersine, METH_NOARGS, "Return the versine of the angle"},
+	{"haversin", (PyCFunction)kolibaAngleHaversine, METH_NOARGS, "Return the haversine of the angle"},
+	{"polsin", (PyCFunction)kolibaAnglePolsine, METH_NOARGS, "Return the polsine of the angle"},
+	{"vercos", (PyCFunction)kolibaAngleVercosine, METH_NOARGS, "Return the vercosine of the angle"},
+	{"havercos", (PyCFunction)kolibaAngleHavercosine, METH_NOARGS, "Return the havercosine of the angle"},
+	{"polcos", (PyCFunction)kolibaAnglePolcosine, METH_NOARGS, "Return the polcosine of the angle"},
+	{"fversin", (PyCFunction)kolibaAngleFactorVersine, METH_VARARGS, "Return the versine of a factor times the angle"},
+	{"fhaversin", (PyCFunction)kolibaAngleFactorHaversine, METH_VARARGS, "Return the haversine of a factor times the angle"},
+	{"fvercos", (PyCFunction)kolibaAngleFactorVercosine, METH_VARARGS, "Return the vercosine of a factor times the angle"},
+	{"fhavercos", (PyCFunction)kolibaAngleFactorHavercosine, METH_VARARGS, "Return the havercosine a factor times of the angle"},
+	{"normalize", (PyCFunction)kolibaAngleNormalize, METH_NOARGS, "Normalize the angle to the first turn"},
 	{NULL}
 };
 
@@ -242,7 +554,236 @@ static PyTypeObject kolibaAngleType = {
 	.tp_dealloc = (destructor)kolibaAngleDealloc,
 	.tp_methods = kolibaAngleMethods,
 	.tp_getset = kolibaAngleGetSet,
+	.tp_as_number = &kolibaAngleAsNumber,
+	.tp_richcompare = kolibaAngleRichCompare,
 };
+
+klbinit(Arc) {
+	static char *kwlist[] = {"angle", "units", "radius", NULL};
+	double angle = self->a.angle;
+	double radius = 1.0;
+	unsigned int units = (unsigned int)self->a.units;
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "|did", kwlist, &angle, &units, &radius))
+		return -1;
+	else if (KOLIBA_AngleSet(&self->a, angle, units) == NULL) {
+		PyErr_Format(PyExc_ValueError, "Units must be %s, %s, %s, or %s", kau[0], kau[1], kau[2], kau[3]);
+		return -1;
+	}
+	else if (radius <= 0.0) {
+		PyErr_Format(PyExc_ValueError, "The radius must be a positive number");
+		return -1;
+		
+	}
+	self->radius = radius;
+	return 0;
+}
+
+KLBO kolibaArcGetRadius(klbo(Arc,self), void *closure) {
+	return PyFloat_FromDouble(self->radius);
+}
+
+static int kolibaArcSetRadius(klbo(Arc,self), PyObject *value, void *closure) {
+	bool err = false;
+	double radius;
+	if (PyFloat_Check(value)) radius = PyFloat_AsDouble(value);
+	else if (PyLong_Check(value)) radius = (double)PyLong_AsDouble(value);
+	else err = true;
+	if ((err) || (radius <= 0.0)){
+		PyErr_SetString(PyExc_TypeError, "The radius must be a positive number");
+		return -1;
+	}
+	self->radius = radius;
+	return 0;
+}
+
+KLBO kolibaArcSectorArea(klbo(Arc,self)) {
+	return PyFloat_FromDouble(KOLIBA_CircularArcSectorArea(&self->a, self->radius));
+}
+
+KLBO kolibaArcLength(klbo(Arc,self)) {
+	return PyFloat_FromDouble(KOLIBA_CircularArcLength(&self->a, self->radius));
+}
+
+KLBO kolibaChordLength(klbo(Arc,self)) {
+	return PyFloat_FromDouble(KOLIBA_CircularChordLength(&self->a, self->radius));
+}
+
+static PyMethodDef kolibaArcMethods[] = {
+	{"area", (PyCFunction)kolibaArcSectorArea, METH_NOARGS, "Return the circular arc sector area of the angle and radius"},
+	{"length", (PyCFunction)kolibaArcLength, METH_NOARGS, "Return the circular arc length"},
+	{"chord", (PyCFunction)kolibaChordLength, METH_NOARGS, "Return the circular chord length"},
+	{NULL}
+};
+
+klbgetset(Arc) = {
+	{"radius", (getter)kolibaArcGetRadius, (setter)kolibaArcSetRadius, "radius of the arc", NULL},
+	{NULL}
+};
+
+static PyTypeObject kolibaArcType = {
+	PyVarObject_HEAD_INIT(NULL,0)
+	.tp_name = "koliba.Arc",
+	.tp_doc  = "Arc objects",
+	.tp_basicsize = sizeof(kolibaArcObject),
+	.tp_itemsize = 0,
+	.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+	.tp_init = (initproc)kolibaArcInit,
+	.tp_methods = kolibaArcMethods,
+	.tp_getset = kolibaArcGetSet,
+};
+
+bool koliba_frangle_exponent(double midpoint, double *exponent) {
+	if ((midpoint <= 0.0) || (midpoint >= 1.0)) {
+		PyErr_Format(PyExc_ValueError, "The midpoint must be greater than zero and lesser than one");
+		return false;
+	}
+	*exponent = KOLIBA_MidpointShift(midpoint);
+	return true;
+}
+
+KLBO koliba_frangle_recalculate(klbo(Frangle,self)) {
+	if (!self->monocycle) {
+		KOLIBA_AngleFromFrame(&self->a, self->frame, self->frames);
+		if (self->exponent != 1.0) {
+			KOLIBA_AnglePower(&self->a, &self->a, self->exponent, true);
+		}
+	}
+	else KOLIBA_AngleFromFrameWithShift(&self->a, self->frame, self->frames, self->exponent);
+	return (PyObject *)self;
+}
+
+klbinit(Frangle) {
+	static char *kwlist[] = {"frames", "frame", "midpoint", "mono", "radius", NULL};
+	double midpoint = 0.5;
+	double exponent;
+	double radius   = KOLIBA_1DivSqrtPi;
+	int    frames   = 120;
+	int    frame    = 0;
+	int    mono     = 1;	// C parses bool values into full-size int.
+
+	if (!PyArg_ParseTupleAndKeywords(args, kwds, "|iidpd", kwlist, &frames, &frame, &midpoint, &mono, &radius))
+		return -1;
+	else if (frames <= 0) {
+		PyErr_Format(PyExc_ValueError, "The frames must be a positive integer");
+		return -1;
+	}
+	else if (radius <= 0.0) {
+		PyErr_Format(PyExc_ValueError, "The radius must be a positive number");
+		return -1;
+		
+	}
+	else if (!koliba_frangle_exponent(midpoint, &exponent)) return -1;
+	self->frames    = frames;
+	self->frame     = frame;
+	self->midpoint  = midpoint;
+	self->exponent  = exponent;
+	self->monocycle = (bool)mono;
+	self->radius    = radius;
+	koliba_frangle_recalculate(self);
+	return 0;
+}
+
+KLBO kolibaFrangleGetFrames(klbo(Frangle,self), void *closure) {
+	return PyLong_FromLong(self->frames);
+}
+
+static int kolibaFrangleSetFrames(klbo(Frangle,self), PyObject *value, void *closure) {
+	int frames = 0;
+	if (PyLong_Check(value)) frames = PyLong_AsLong(value);
+	if (frames <= 0) {
+		PyErr_Format(PyExc_ValueError, "The frames must be a positive integer");
+		return -1;
+	}
+	self->frames = frames;
+	koliba_frangle_recalculate(self);
+	return 0;
+}
+
+KLBO kolibaFrangleGetFrame(klbo(Frangle,self), void *closure) {
+	return PyLong_FromLong(self->frame);
+}
+
+static int kolibaFrangleSetFrame(klbo(Frangle,self), PyObject *value, void *closure) {
+	if (PyLong_Check(value)) self->frame = PyLong_AsLong(value);
+	else {
+		PyErr_Format(PyExc_ValueError, "The frame must be an integer");
+		return -1;
+	}
+	koliba_frangle_recalculate(self);
+	return 0;
+}
+
+KLBO kolibaFrangleGetMidpoint(klbo(Frangle,self), void *closure) {
+	return PyFloat_FromDouble(self->midpoint);
+}
+
+static int kolibaFrangleSetMidpoint(klbo(Frangle,self), PyObject *value, void *closure) {
+	double midpoint = 0.0;
+	double exponent;
+	if (PyFloat_Check(value)) midpoint = PyFloat_AsDouble(value);
+	else if (PyLong_Check(value)) midpoint = (double)PyLong_AsDouble(value);
+	if (!koliba_frangle_exponent(midpoint, &exponent)) return -1;
+	self->midpoint = midpoint;
+	self->exponent = exponent;
+	koliba_frangle_recalculate(self);
+	return 0;
+}
+
+KLBO kolibaFrangleGetMonocycle(klbo(Frangle,self), void *closure) {
+	if (self->monocycle) {
+		Py_RETURN_TRUE;
+	}
+	Py_RETURN_FALSE;
+}
+
+static int kolibaFrangleSetMonocycle(klbo(Frangle,self), PyObject *value, void *closure) {
+	if (PyBool_Check(value)) self->monocycle = (value == Py_True);
+	else {
+		PyErr_Format(PyExc_ValueError, "The monocycle property must be True or False");
+		return -1;
+	}
+	koliba_frangle_recalculate(self);
+	return 0;
+}
+
+static PyMethodDef kolibaFrangleMethods[] = {
+//	{"area", (PyCFunction)kolibaArcSectorArea, METH_NOARGS, "Return the circular arc sector area of the angle and radius"},
+//	{"length", (PyCFunction)kolibaArcLength, METH_NOARGS, "Return the circular arc length"},
+//	{"chord", (PyCFunction)kolibaChordLength, METH_NOARGS, "Return the circular chord length"},
+	{NULL}
+};
+
+klbgetset(Frangle) = {
+	{"frames", (getter)kolibaFrangleGetFrames, (setter)kolibaFrangleSetFrames, "total number of frames of the frangle", NULL},
+	{"frame", (getter)kolibaFrangleGetFrame, (setter)kolibaFrangleSetFrame, "current frame of the frangle", NULL},
+	{"midpoint", (getter)kolibaFrangleGetMidpoint, (setter)kolibaFrangleSetMidpoint, "midpoint of the frangle", NULL},
+	{"mono", (getter)kolibaFrangleGetMonocycle, (setter)kolibaFrangleSetMonocycle, "the monocycle state of the frangle", NULL},
+	{"monocycle", (getter)kolibaFrangleGetMonocycle, (setter)kolibaFrangleSetMonocycle, "the monocycle state of the frangle", NULL},
+	{NULL}
+};
+
+static PyTypeObject kolibaFrangleType = {
+	PyVarObject_HEAD_INIT(NULL,0)
+	.tp_name = "koliba.Frangle",
+	.tp_doc  = "Frangle (Frame Angle) objects",
+	.tp_basicsize = sizeof(kolibaFrangleObject),
+	.tp_itemsize = 0,
+	.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+	.tp_init = (initproc)kolibaFrangleInit,
+	.tp_methods = kolibaFrangleMethods,
+	.tp_getset = kolibaFrangleGetSet,
+};
+
+KLBO koliba_MidpointShift(PyObject *self, PyObject *args) {
+	double midpoint;
+
+	if (!PyArg_ParseTuple(args, "d", &midpoint)) return NULL;
+	else if ((midpoint <= 0.0) || (midpoint >= 1.0)) {
+		PyErr_SetString(PyExc_TypeError, "The midpoint must be greater than 0 and lesser than 1");
+		return NULL;
+	}
+	return PyFloat_FromDouble(KOLIBA_MidpointShift(midpoint));	
+}
 
 KLBO koliba_Double_const_mul(PyObject *self, PyObject *args, double val) {
 	double d = 1.0;
@@ -336,6 +877,7 @@ static PyMethodDef KolibaMethods[] = {
 	{"RadiusFromTangent", koliba_invKappa, METH_VARARGS, "Multiplies by 3/(4(sqrt(2)-1))."},
 	{"TangentToRadius", koliba_compKappa, METH_VARARGS, "Multiplies by (1 - 4(sqrt(2)-1)/3)."},
 	{"AbsoluteTangent", (PyCFunction)koliba_absKappa, METH_VARARGS | METH_KEYWORDS, "Returns start + 4 radius (sqrt(2)-1)/3."},
+	{"MidpointToShift", koliba_MidpointShift, METH_VARARGS, "Converts a midpoint into a shift."},
 	{NULL, NULL, 0, NULL}
 };
 
@@ -352,7 +894,11 @@ PyInit_koliba(void)
 {
 	PyObject *m, *d, *o;
 
-	if (PyType_Ready(&kolibaAngleType) < 0) return NULL;
+	kolibaArcType.tp_base = &kolibaAngleType;
+	kolibaFrangleType.tp_base = &kolibaArcType;
+	if ((PyType_Ready(&kolibaAngleType) < 0) ||
+		(PyType_Ready(&kolibaArcType) < 0) ||
+		(PyType_Ready(&kolibaFrangleType) < 0)) return NULL;
 	if ((m = PyModule_Create(&kolibamodule)) == NULL) return NULL;
 	Py_INCREF(&kolibaAngleType);
 	if (PyModule_AddObject(m, "Angle", (PyObject *)&kolibaAngleType) < 0) {
@@ -360,7 +906,23 @@ PyInit_koliba(void)
 		Py_DECREF(m);
 		return NULL;
 	}
+	Py_INCREF(&kolibaArcType);
+	if (PyModule_AddObject(m, "Arc", (PyObject *)&kolibaArcType) < 0) {
+		Py_DECREF(&kolibaArcType);
+		Py_DECREF(&kolibaAngleType);
+		Py_DECREF(m);
+		return NULL;
+	}
+	Py_INCREF(&kolibaFrangleType);
+	if (PyModule_AddObject(m, "Frangle", (PyObject *)&kolibaFrangleType) < 0) {
+		Py_DECREF(&kolibaFrangleType);
+		Py_DECREF(&kolibaArcType);
+		Py_DECREF(&kolibaAngleType);
+		Py_DECREF(m);
+		return NULL;
+	}
 	if ((d = PyModule_GetDict(m))) {
+		Py_INCREF(d);
 		DoubleConst("pi", KOLIBA_Pi);
 		DoubleConst("invpi", KOLIBA_1DivPi);
 		DoubleConst("tau", KOLIBA_2Pi);
@@ -420,6 +982,8 @@ PyInit_koliba(void)
 		DoubleConst("kappa", KOLIBA_Kappa);
 		DoubleConst("invkappa", KOLIBA_1DivKappa);
 		DoubleConst("compkappa", KOLIBA_1MinKappa);
+		DoubleConst("ickappa", KOLIBA_1Div1MinKappa);
+		Py_DECREF(d);
 	}
 
 	PyModule_AddIntConstant(m, (char *)kau[KAU_degrees], (long)KAU_degrees);
