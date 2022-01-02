@@ -123,3 +123,34 @@ The `Angle` class provides a number of methods,
 >>> a.polcos()
 0.4672984353849283
 ```
+
+### Monocycle
+
+A useful tool for video editing is restraining the angle to just one
+cycle, or `monocycle`. That is, if an angle is negative, it is treated
+as if it equal 0. When an angle is greater than `360°` (or `1` turn, or
+`2π` radians...), it is treated as `360°` (or `1` turn, or `2π` radians...).
+
+For example,
+
+```
+>>> from koliba import *
+>>> a = Angle(60)
+>>> a.cos()
+0.5000000000000001
+>>> a.monocos()
+0.5000000000000001
+>>> a.degrees = 567.89
+>>> a.cos()
+-0.8838472857870293
+>>> a.monocos()
+1.0
+>>> a.degrees = -567.89
+>>> a.cos()
+-0.8838472857870293
+>>> a.monocos()
+1.0
+```
+
+We have a separate (sub)class that allows us more control over monocycle
+use. It shall be described below as soon as I can get to it.
