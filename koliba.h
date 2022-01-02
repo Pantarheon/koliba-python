@@ -2,7 +2,7 @@
 
 	koliba.h
 
-	Copyright 2019-2021 G. Adam Stanislav
+	Copyright 2019-2022 G. Adam Stanislav
 	All rights reserved
 
 	Redistribution and use in source and binary forms,
@@ -999,16 +999,19 @@ KLBDC extern const double KOLIBA_PiDiv2;
 KLBDC extern const double KOLIBA_PiDiv180;
 KLBDC extern const double KOLIBA_180DivPi;
 KLBDC extern const double KOLIBA_1Div2Pi;
+KLBDC extern const double KOLIBA_1DivSqrt2Pi;
 KLBDC extern const double KOLIBA_1Div360;
 KLBDC extern const double KOLIBA_360;
 KLBDC extern const double KOLIBA_1Div2;
 KLBDC extern const double KOLIBA_1DivPi;
+KLBDC extern const double KOLIBA_1DivSqrtPi;
 KLBDC extern const double KOLIBA_180;
 KLBDC extern const double KOLIBA_1Div180;
 KLBDC extern const double KOLIBA_2;
 KLBDC extern const double KOLIBA_Kappa;
 KLBDC extern const double KOLIBA_1DivKappa;
 KLBDC extern const double KOLIBA_1MinKappa;
+KLBDC extern const double KOLIBA_1Div1MinKappa;
 
 // And some macros/inlines for their use.
 #ifdef	NOKLINLIN
@@ -3827,7 +3830,24 @@ KLBDC double KOLIBA_AngleRadians(const KOLIBA_ANGLE * const kAng);
 KLBDC double KOLIBA_AngleTurns(const KOLIBA_ANGLE * const kAng);
 KLBDC double KOLIBA_AnglePis(const KOLIBA_ANGLE * const kAng);
 KLBDC double KOLIBA_AngleSine(const KOLIBA_ANGLE * const kAng);
+KLBDC double KOLIBA_AngleSineSquared(const KOLIBA_ANGLE * const kAng);
+KLBDC double KOLIBA_AngleFactorSine(const KOLIBA_ANGLE * const kAng, double factor);
+KLBDC double KOLIBA_AngleNormalizedSine(const KOLIBA_ANGLE * const angle);
+KLBDC double KOLIBA_AngleFactorNormalizedSine(const KOLIBA_ANGLE * const angle, double factor);
 KLBDC double KOLIBA_AngleCosine(const KOLIBA_ANGLE * const kAng);
+KLBDC double KOLIBA_AngleCosineSquared(const KOLIBA_ANGLE * const kAng);
+KLBDC double KOLIBA_AngleFactorCosine(const KOLIBA_ANGLE * const kAng, double factor);
+KLBDC double KOLIBA_AngleNormalizedCosine(const KOLIBA_ANGLE * const angle);
+KLBDC double KOLIBA_AngleFactorNormalizedCosine(const KOLIBA_ANGLE * const angle, double factor);
+KLBDC double KOLIBA_MonocyclicalAngle(const KOLIBA_ANGLE * const kAng);
+KLBDC double KOLIBA_CanonicalAngle(const KOLIBA_ANGLE * const kAng);
+
+// Get an angle in requested units.
+KLBDC double  KOLIBA_AngleGet(
+	const KOLIBA_ANGLE * const kAng,
+	KOLIBA_ANGLEUNITS units
+);
+
 
 KLBDC KOLIBA_ANGLE *  KOLIBA_AngleSet(
 	KOLIBA_ANGLE * kAng,
@@ -3835,11 +3855,93 @@ KLBDC KOLIBA_ANGLE *  KOLIBA_AngleSet(
 	KOLIBA_ANGLEUNITS units
 );
 
+KLBDC KOLIBA_ANGLE * KOLIBA_AngleNormalize(
+	KOLIBA_ANGLE * kAng
+);
+
+// Add two angles.
+KLBDC KOLIBA_ANGLE * KOLIBA_AngleAdd(
+	KOLIBA_ANGLE * result,
+	const KOLIBA_ANGLE * const augend,
+	const KOLIBA_ANGLE * const addend
+);
+
+// Subtract an angle from another angle.
+KLBDC KOLIBA_ANGLE * KOLIBA_AngleSubtract(
+	KOLIBA_ANGLE * kAng,
+	const KOLIBA_ANGLE * const minuend,
+	const KOLIBA_ANGLE * const subtrahend
+);
+
+// Multiply an angle by a constant.
+KLBDC KOLIBA_ANGLE * KOLIBA_AngleMultiply(
+	KOLIBA_ANGLE * kAng,
+	const KOLIBA_ANGLE * const multiplicand,
+	double multiplier
+);
+
+// Raise the turns of an angle to a power, optionally normalizing first.
+KLBDC KOLIBA_ANGLE * KOLIBA_AnglePower(
+	KOLIBA_ANGLE * kAng,
+	const KOLIBA_ANGLE * const base,
+	double exponent,
+	bool normalize
+);
+
+// Divide an angle by a constant.
+// If floored, do it in degrees.
+KLBDC KOLIBA_ANGLE * KOLIBA_AngleDivide(
+	KOLIBA_ANGLE * kAng,
+	const KOLIBA_ANGLE * const dividend,
+	double divisor,
+	bool floored
+);
+
+// Convert a frame/frames into turns of a circular angle.
+KLBDC KOLIBA_ANGLE * KOLIBA_AngleFromFrame(
+	KOLIBA_ANGLE * kAng,
+	int frame,
+	int frames		// Must be > 0
+);
+
+// The "shift" is the exponent needed to shift
+// the midpoint from some value m to 0.5, i.e.,
+// shift = log(0.5)/log(m) = -1/l2(m), where l2
+// is logarithm base 2.
+//
+// While it is not enforced (since it may be called
+// millions of times in a row), 0 < shift <= 1 is
+// generally expected.
+KLBDC KOLIBA_ANGLE * KOLIBA_AngleFromFrameWithShift(
+	KOLIBA_ANGLE * kAng,
+	int frame,
+	int frames,		// Must be > 0
+	double shift
+);
+
+// Calculate midpoint "shift", i.e., the exponent needed
+// to shift a new midpoint m to 0.5 by raising it to
+// the power of shift.
+//
+// Only inputs 0 < midpoint < 1 are accepted, anything
+// else returns 1 (i.e., no shift).
+KLBDC double KOLIBA_MidpointShift(double midpoint);
+
 #ifdef	NOKLINLIN
 #define KOLIBA_AngleSetDegrees(kAng,angle)	KOLIBA_AngleSet(kAng, angle, KAU_degrees)
 #define KOLIBA_AngleSetRadians(kAng,angle)	KOLIBA_AngleSet(kAng, angle, KAU_radians)
 #define KOLIBA_AngleSetTurns(kAng,angle)	KOLIBA_AngleSet(kAng, angle, KAU_turns)
 #define KOLIBA_AngleSetPis(kAng,angle)	KOLIBA_AngleSet(kAng, angle, KAU_pis)
+#define	KOLIBA_AngleVersine(kAng)	(1.0-KOLIBA_AngleCosine(kAng))
+#define KOLIBA_AngleHaversine(kAng)	(KOLIBA_AngleVersine(kAng)/2.0)
+#define	KOLIBA_AnglePolsine(kAng)	((1.0-KOLIBA_AngleFactorNormalizedCosine(kAng,0.5))/2.0)
+#define	KOLIBA_AngleVercosine(kAng)	(1.0+KOLIBA_AngleCosine(kAng))
+#define KOLIBA_AngleHavercosine(kAng)	(KOLIBA_AngleVercosine(kAng)/2.0)
+#define	KOLIBA_AnglePolcosine(kAng)	((1.0+KOLIBA_AngleFactorNormalizedCosine(kAng,0.5))/2.0)
+#define	KOLIBA_AngleFactorVersine(kAng,factor)	(1.0-KOLIBA_AngleFactorCosine(kAng,factor))
+#define KOLIBA_AngleFactorHaversine(kAng,factor)	(KOLIBA_AngleFactorVersine(kAng,factor)/2.0)
+#define	KOLIBA_AngleFactorVercosine(kAng,factor)	(1.0+KOLIBA_AngleFactorCosine(kAng,factor))
+#define KOLIBA_AngleFactorHavercosine(kAng,factor)	(KOLIBA_AngleFactorVercosine(kAng,factor)/2.0)
 #else
 inline KOLIBA_ANGLE *  KOLIBA_AngleSetDegrees(KOLIBA_ANGLE *kAng, double angle) {
 	return KOLIBA_AngleSet(kAng, angle, KAU_degrees);
@@ -3856,7 +3958,68 @@ inline KOLIBA_ANGLE *  KOLIBA_AngleSetTurns(KOLIBA_ANGLE *kAng, double angle) {
 inline KOLIBA_ANGLE *  KOLIBA_AngleSetPis(KOLIBA_ANGLE *kAng, double angle) {
 	return KOLIBA_AngleSet(kAng, angle, KAU_pis);
 }
+
+inline double KOLIBA_AngleVersine(const KOLIBA_ANGLE * const kAng) {
+	return (1.0 - KOLIBA_AngleCosine(kAng));
+}
+
+inline double KOLIBA_AngleHaversine(const KOLIBA_ANGLE * const kAng) {
+	return (KOLIBA_AngleVersine(kAng)/2.0);
+}
+
+inline double KOLIBA_AnglePolsine(const KOLIBA_ANGLE * const kAng) {
+	return (1.0 - KOLIBA_AngleFactorNormalizedCosine(kAng, 0.5)) / 2.0;
+}
+
+inline double KOLIBA_AngleVercosine(const KOLIBA_ANGLE * const kAng) {
+	return (1.0 + KOLIBA_AngleCosine(kAng));
+}
+
+inline double KOLIBA_AngleHavercosine(const KOLIBA_ANGLE * const kAng) {
+	return (KOLIBA_AngleVercosine(kAng)/2.0);
+}
+
+inline double KOLIBA_AnglePolcosine(const KOLIBA_ANGLE * const kAng) {
+	return (1.0 + KOLIBA_AngleFactorNormalizedCosine(kAng, 0.5)) / 2.0;
+}
+
+inline double KOLIBA_AngleFactorVersine(const KOLIBA_ANGLE * const kAng, double factor) {
+	return (1.0 - KOLIBA_AngleFactorCosine(kAng, factor));
+}
+
+inline double KOLIBA_AngleFactorHaversine(const KOLIBA_ANGLE * const kAng, double factor) {
+	return (KOLIBA_AngleFactorVersine(kAng, factor)/2.0);
+}
+
+inline double KOLIBA_AngleFactorVercosine(const KOLIBA_ANGLE * const kAng, double factor) {
+	return (1.0 + KOLIBA_AngleFactorCosine(kAng, factor));
+}
+
+inline double KOLIBA_AngleFactorHavercosine(const KOLIBA_ANGLE * const kAng, double factor) {
+	return (KOLIBA_AngleFactorVercosine(kAng, factor)/2.0);
+}
 #endif
+
+// The Arc "class" function, where Arc could be a derived class
+// of the Angle class.
+
+// Area of a circular arc sector.
+KLBDC double  KOLIBA_CircularArcSectorArea(
+	const KOLIBA_ANGLE * const kAngle,
+	double radius
+);
+
+// Length of a circular arc.
+KLBDC double  KOLIBA_CircularArcLength(
+	const KOLIBA_ANGLE * const kAngle,
+	double radius
+);
+
+// Length of a circular chord.
+KLBDC double  KOLIBA_CircularChordLength(
+	const KOLIBA_ANGLE * const kAngle,
+	double radius
+);
 
 
 
@@ -5474,11 +5637,15 @@ inline KOLIBA_ABGR32PIXEL * KOLIBA_Abgr32PixelLumidux(KOLIBA_ABGR32PIXEL *pixelo
 
 #include <stdio.h>
 
+typedef int (*KOLIBA_FPRINTF)(FILE *, const char *, ...);
+KLBDC extern KOLIBA_FPRINTF const KOLIBA_Fprintf;
+
 // File open and close routines to be used only with
 // the "OpenFile" routines in the library.
 
-KLBDC FILE * KOLIBA_OpenToRead(const char const *filename);
-KLBDC FILE * KOLIBA_OpenToWrite(const char const *filename);
+KLBDC FILE * KOLIBA_OpenToRead(const char * filename);
+KLBDC FILE * KOLIBA_OpenToWrite(const char * filename);
+KLBDC FILE * KOLIBA_StdOut(void);
 KLBDC int KOLIBA_Close(FILE *f);
 
 // Write a SLUT to an open .sLut file. It needs to be open for writing binary
