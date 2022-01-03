@@ -4,7 +4,32 @@ This is a Python port of the [koliba library](https://github.com/Pantarheon/libk
 Or will be when it is completed. :)
 
 You need to have it installed on your system. The easiest way is to download it
-by git from the above-mentioned link.
+by git from the above-mentioned link. On Linux and such (including in the Windows
+Sublayer for Linux), use:
+
+```
+git clone https://github.com/Pantarheon/libkoliba.git
+cd libkoliba
+cd src
+sudo make install clean
+```
+
+Or you could download the full `koliba` package,
+
+```
+git clone --recurse-submodules https://github.com/Pantarheon/koliba.git
+cd koliba
+cd libkoliba
+cd src
+sudo make install clean
+cd ../../src       # to get to koliba/src
+sudo make install-all clean
+cd ../freliba/src  # this is optional for frei0r users
+sudo make install clean
+```
+
+On `MS Windows` without the Windows Sublayer for Windows, the `koliba` library
+is linked statically with the `koliba.pyd` file.
 
 ## Globals
 
