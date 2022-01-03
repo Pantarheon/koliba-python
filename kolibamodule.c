@@ -4,7 +4,7 @@
 
 	kolibamodule.c
 
-	Copyright 2021 G. Adam Stanislav
+	Copyright 2021-2022 G. Adam Stanislav
 	All rights reserved
 
 	Redistribution and use in source and binary forms,
@@ -681,10 +681,15 @@ KLBO kolibaChordLength(klbo(Arc,self)) {
 	return PyFloat_FromDouble(KOLIBA_CircularChordLength(&self->a, self->radius));
 }
 
+KLBO kolibaArcSagitta(klbo(Arc,self)) {
+	return PyFloat_FromDouble(self->radius*KOLIBA_AngleVersine(&self->a));
+}
+
 static PyMethodDef kolibaArcMethods[] = {
 	{"area", (PyCFunction)kolibaArcSectorArea, METH_NOARGS, "Return the circular arc sector area of the angle and radius"},
 	{"length", (PyCFunction)kolibaArcLength, METH_NOARGS, "Return the circular arc length"},
 	{"chord", (PyCFunction)kolibaChordLength, METH_NOARGS, "Return the circular chord length"},
+	{"sagitta", (PyCFunction)kolibaArcSagitta, METH_NOARGS, "Return the sagitta of the circular arc"},
 	{NULL}
 };
 
