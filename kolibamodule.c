@@ -79,6 +79,7 @@ typedef struct {
 	kolibaArcObject;
 	double midpoint;
 	double exponent;	// This is "private"
+	double t;
 	int    frames;
 	int    frame;
 	bool   monocycle;
@@ -713,14 +714,12 @@ bool koliba_frangle_exponent(double midpoint, double *exponent) {
 	return true;
 }
 
-KLBO koliba_frangle_recalculate(klbo(Frangle,self)) {
+KLBO koliba_frangle_recalculate(klbo(Frangle,self), bool t) {
+	if (t) self->t = (double)self->frame / (double)self->frames;
 	if (!self->monocycle) {
-		KOLIBA_AngleFromFrame(&self->a, self->frame, self->frames);
-		if (self->exponent != 1.0) {
-			KOLIBA_AnglePower(&self->a, &self->a, self->exponent, true);
-		}
+		KOLIBA_AngleFromT(&self->a, self->t, self->exponent);
 	}
-	else KOLIBA_AngleFromFrameWithShift(&self->a, self->frame, self->frames, self->exponent);
+	else KOLIBA_AngleMonocycleFromT(&self->a, self->t, self->exponent);
 	return (PyObject *)self;
 }
 
@@ -751,7 +750,7 @@ klbinit(Frangle) {
 	self->exponent  = exponent;
 	self->monocycle = (bool)mono;
 	self->radius    = radius;
-	koliba_frangle_recalculate(self);
+	koliba_frangle_recalculate(self, true);
 	return 0;
 }
 
@@ -767,7 +766,7 @@ static int kolibaFrangleSetFrames(klbo(Frangle,self), PyObject *value, void *clo
 		return -1;
 	}
 	self->frames = frames;
-	koliba_frangle_recalculate(self);
+	koliba_frangle_recalculate(self, true);
 	return 0;
 }
 
@@ -781,7 +780,7 @@ static int kolibaFrangleSetFrame(klbo(Frangle,self), PyObject *value, void *clos
 		PyErr_Format(PyExc_ValueError, "The frame must be an integer");
 		return -1;
 	}
-	koliba_frangle_recalculate(self);
+	koliba_frangle_recalculate(self, true);
 	return 0;
 }
 
@@ -797,7 +796,7 @@ static int kolibaFrangleSetMidpoint(klbo(Frangle,self), PyObject *value, void *c
 	if (!koliba_frangle_exponent(midpoint, &exponent)) return -1;
 	self->midpoint = midpoint;
 	self->exponent = exponent;
-	koliba_frangle_recalculate(self);
+	koliba_frangle_recalculate(self, false);
 	return 0;
 }
 
@@ -814,11 +813,35 @@ static int kolibaFrangleSetMonocycle(klbo(Frangle,self), PyObject *value, void *
 		PyErr_Format(PyExc_ValueError, "The monocycle property must be True or False");
 		return -1;
 	}
-	koliba_frangle_recalculate(self);
+	koliba_frangle_recalculate(self, false);
 	return 0;
 }
 
+KLBO kolibaFrangleGetT(klbo(Frangle,self), void *closure) {
+	return PyFloat_FromDouble(self->t);
+}
+
+static int kolibaFrangleSetT(klbo(Frangle,self), PyObject *value, void *closure) {
+	double t;
+	if (PyFloat_Check(value)) t = PyFloat_AsDouble(value);
+	else if (PyLong_Check(value)) t = (double)PyLong_AsDouble(value);
+	else return -1;
+	self->t = t;
+	koliba_frangle_recalculate(self, false);
+	return 0;
+}
+
+KLBO kolibaFranglePolsine(klbo(Frangle,self)) {
+	return PyFloat_FromDouble((self->monocycle) ? ((1.0-KOLIBA_AngleFactorCosine(&self->a,0.5))/2.0) : KOLIBA_AnglePolsine(&self->a));
+}
+
+KLBO kolibaFranglePolcosine(klbo(Frangle,self)) {
+	return PyFloat_FromDouble((self->monocycle) ? ((1.0+KOLIBA_AngleFactorCosine(&self->a,0.5))/2.0) : KOLIBA_AnglePolcosine(&self->a));
+}
+
 static PyMethodDef kolibaFrangleMethods[] = {
+	{"polsin", (PyCFunction)kolibaFranglePolsine, METH_NOARGS, "Return the polsine of the angle"},
+	{"polcos", (PyCFunction)kolibaFranglePolcosine, METH_NOARGS, "Return the polcosine of the angle"},
 //	{"area", (PyCFunction)kolibaArcSectorArea, METH_NOARGS, "Return the circular arc sector area of the angle and radius"},
 //	{"length", (PyCFunction)kolibaArcLength, METH_NOARGS, "Return the circular arc length"},
 //	{"chord", (PyCFunction)kolibaChordLength, METH_NOARGS, "Return the circular chord length"},
@@ -831,6 +854,7 @@ klbgetset(Frangle) = {
 	{"midpoint", (getter)kolibaFrangleGetMidpoint, (setter)kolibaFrangleSetMidpoint, "midpoint of the frangle", NULL},
 	{"mono", (getter)kolibaFrangleGetMonocycle, (setter)kolibaFrangleSetMonocycle, "the monocycle state of the frangle", NULL},
 	{"monocycle", (getter)kolibaFrangleGetMonocycle, (setter)kolibaFrangleSetMonocycle, "the monocycle state of the frangle", NULL},
+	{"t", (getter)kolibaFrangleGetT, (setter)kolibaFrangleSetT, "the 't' of the frangle", NULL},
 	{NULL}
 };
 
