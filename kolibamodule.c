@@ -368,7 +368,10 @@ KLBO kolibaAngleFactorMonocycleHavercosine(klbo(Angle,self), PyObject *args) {
 }
 
 KLBO kolibaAngleNormalize(klbo(Angle,self)) {
-	if (KOLIBA_AngleNormalize(&self->a) == NULL) return NULL;
+	if (isklbtype(Frangle, self)) {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+	else if (KOLIBA_AngleNormalize(&self->a) == NULL) return NULL;
 	Py_RETURN_NONE;
 }
 
@@ -845,11 +848,8 @@ KLBO kolibaFranglePolcosine(klbo(Frangle,self)) {
 }
 
 static PyMethodDef kolibaFrangleMethods[] = {
-	{"polsin", (PyCFunction)kolibaFranglePolsine, METH_NOARGS, "Return the polsine of the angle"},
-	{"polcos", (PyCFunction)kolibaFranglePolcosine, METH_NOARGS, "Return the polcosine of the angle"},
-//	{"area", (PyCFunction)kolibaArcSectorArea, METH_NOARGS, "Return the circular arc sector area of the angle and radius"},
-//	{"length", (PyCFunction)kolibaArcLength, METH_NOARGS, "Return the circular arc length"},
-//	{"chord", (PyCFunction)kolibaChordLength, METH_NOARGS, "Return the circular chord length"},
+	{"polsin", (PyCFunction)kolibaFranglePolsine, METH_NOARGS, "Return the polsine of the frangle"},
+	{"polcos", (PyCFunction)kolibaFranglePolcosine, METH_NOARGS, "Return the polcosine of the frangle"},
 	{NULL}
 };
 
