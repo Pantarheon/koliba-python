@@ -368,10 +368,9 @@ KLBO kolibaAngleFactorMonocycleHavercosine(klbo(Angle,self), PyObject *args) {
 }
 
 KLBO kolibaAngleNormalize(klbo(Angle,self)) {
-	if (isklbtype(Frangle, self)) {
-		Py_RETURN_NOTIMPLEMENTED;
+	if (!isklbtype(Frangle, self)) {
+		if (KOLIBA_AngleNormalize(&self->a) == NULL) return NULL;
 	}
-	else if (KOLIBA_AngleNormalize(&self->a) == NULL) return NULL;
 	Py_RETURN_NONE;
 }
 
