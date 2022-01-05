@@ -251,6 +251,22 @@ KLBO kolibaAngleCosine(klbo(Angle,self)) {
 	return PyFloat_FromDouble(KOLIBA_AngleCosine(&self->a));
 }
 
+KLBO kolibaAngleFactorSine(klbo(Angle,self), PyObject *args) {
+	double factor;
+
+	if (!PyArg_ParseTuple(args, "d", &factor)) return NULL;
+
+	return PyFloat_FromDouble(KOLIBA_AngleFactorSine(&self->a, factor));
+}
+
+KLBO kolibaAngleFactorCosine(klbo(Angle,self), PyObject *args) {
+	double factor;
+
+	if (!PyArg_ParseTuple(args, "d", &factor)) return NULL;
+
+	return PyFloat_FromDouble(KOLIBA_AngleFactorCosine(&self->a, factor));
+}
+
 KLBO kolibaAngleMonocycleSine(klbo(Angle,self)) {
 	return PyFloat_FromDouble(KOLIBA_AngleMonocycleSine(&self->a));
 }
@@ -590,6 +606,8 @@ static PyNumberMethods kolibaAngleAsNumber = {
 static PyMethodDef kolibaAngleMethods[] = {
 	{"sin", (PyCFunction)kolibaAngleSine, METH_NOARGS, "Return the sine of the angle"},
 	{"cos", (PyCFunction)kolibaAngleCosine, METH_NOARGS, "Return the cosine of the angle"},
+	{"fsin", (PyCFunction)kolibaAngleFactorSine, METH_VARARGS, "Return the sine of the factor times the angle"},
+	{"fcos", (PyCFunction)kolibaAngleFactorCosine, METH_VARARGS, "Return the cosine of the factor times the angle"},
 	{"monosin", (PyCFunction)kolibaAngleMonocycleSine, METH_NOARGS, "Return the monocyclic sine of the angle"},
 	{"monocos", (PyCFunction)kolibaAngleMonocycleCosine, METH_NOARGS, "Return the monocyclic cosine of the angle"},
 	{"monocycle", (PyCFunction)kolibaAngleMonocyclical, METH_NOARGS, "Return the monocycle of the angle"},
