@@ -367,9 +367,17 @@ KLBO kolibaAngleFactorMonocycleHavercosine(klbo(Angle,self), PyObject *args) {
 	return PyFloat_FromDouble(KOLIBA_AngleFactorMonocycleHavercosine((&self->a), factor));
 }
 
-KLBO kolibaAngleNormalize(klbo(Angle,self)) {
+KLBO kolibaAngleNormalize(klbo(Angle,self), PyObject *args) {
 	if (!isklbtype(Frangle, self)) {
-		if (KOLIBA_AngleNormalize(&self->a) == NULL) return NULL;
+		int mono = 0;
+
+		if (!PyArg_ParseTuple(args, "|p", &mono)) return NULL;
+		if (mono) {
+			if (KOLIBA_AngleMonocycle(&self->a) == NULL) return NULL;
+		}
+		else {
+			if (KOLIBA_AngleNormalize(&self->a) == NULL) return NULL;
+		}
 	}
 	Py_RETURN_NONE;
 }
@@ -605,7 +613,7 @@ static PyMethodDef kolibaAngleMethods[] = {
 	{"fmonohaversin", (PyCFunction)kolibaAngleFactorMonocycleHaversine, METH_VARARGS, "Return the monocyclic haversine of a factor times the angle"},
 	{"fmonovercos", (PyCFunction)kolibaAngleFactorMonocycleVercosine, METH_VARARGS, "Return the monocyclic vercosine of a factor times the angle"},
 	{"fmonohavercos", (PyCFunction)kolibaAngleFactorMonocycleHavercosine, METH_VARARGS, "Return the monocyclic havercosine of a factor times the angle"},
-	{"normalize", (PyCFunction)kolibaAngleNormalize, METH_NOARGS, "Normalize the angle to the first turn"},
+	{"normalize", (PyCFunction)kolibaAngleNormalize, METH_VARARGS, "Normalize the angle to the first turn"},
 	{NULL}
 };
 
