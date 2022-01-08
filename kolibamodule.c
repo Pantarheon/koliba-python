@@ -399,7 +399,7 @@ KLBO kolibaAngleNormalize(klbo(Angle,self), PyObject *args) {
 }
 
 KLBO kolibaAngleAdd(PyObject *augmend, PyObject *addend) {
-	if ((isklbtype(Angle, augmend)) && (!isklbtype(Frangle, augmend)) && (isklbtype(Angle, addend))) {
+	if ((isklbtype(Angle, augmend)) && (isklbtype(Angle, addend))) {
 		PyObject *sum = kolibaAngleNew((PyTypeObject*)PyObject_Type(augmend), NULL, NULL);
 		KOLIBA_AngleAdd(&((kolibaAngleObject *)sum)->a, &((kolibaAngleObject *)augmend)->a, &((kolibaAngleObject *)addend)->a);
 		if (isklbtype(Arc, augmend)) ((kolibaArcObject *)sum)->radius = ((kolibaArcObject *)augmend)->radius;
@@ -409,7 +409,7 @@ KLBO kolibaAngleAdd(PyObject *augmend, PyObject *addend) {
 }
 
 KLBO kolibaAngleInPlaceAdd(PyObject *augmend, PyObject *addend) {
-	if ((isklbtype(Angle, augmend)) && (!isklbtype(Frangle, augmend)) && (isklbtype(Angle, addend))) {
+	if ((isklbtype(Angle, augmend)) && (isklbtype(Angle, addend))) {
 		Py_INCREF(augmend);
 		KOLIBA_AngleAdd(&((kolibaAngleObject *)augmend)->a, &((kolibaAngleObject *)augmend)->a, &((kolibaAngleObject *)addend)->a);
 		return augmend;
@@ -878,6 +878,43 @@ static PyMethodDef kolibaFrangleMethods[] = {
 	{NULL}
 };
 
+KLBO kolibaFrangleAdd(PyObject *augmend, PyObject *addend) {
+	if ((isklbtype(Frangle, augmend)) && (isklbtype(Angle, addend))) {
+		PyObject *sum = kolibaAngleNew((PyTypeObject*)PyObject_Type(augmend), NULL, NULL);
+		((kolibaFrangleObject *)sum)->t =
+			((kolibaFrangleObject *)augmend)->t +
+			((isklbtype(Frangle, addend)) ? ((kolibaFrangleObject *)addend)->t :
+			KOLIBA_AngleTurns(&((kolibaAngleObject *)addend)->a));
+		((kolibaFrangleObject *)sum)->midpoint  = ((kolibaFrangleObject *)augmend)->midpoint;
+		((kolibaFrangleObject *)sum)->exponent  = ((kolibaFrangleObject *)augmend)->exponent;
+		((kolibaFrangleObject *)sum)->frames    = ((kolibaFrangleObject *)augmend)->frames;
+		((kolibaFrangleObject *)sum)->frame     = ((kolibaFrangleObject *)augmend)->frame;
+		((kolibaFrangleObject *)sum)->monocycle = ((kolibaFrangleObject *)augmend)->monocycle;
+		((kolibaFrangleObject *)sum)->radius    = ((kolibaFrangleObject *)augmend)->radius;
+		koliba_frangle_recalculate((kolibaFrangleObject *)sum, false);
+		return sum;
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+KLBO kolibaFrangleInPlaceAdd(PyObject *augmend, PyObject *addend) {
+	if ((isklbtype(Frangle, augmend)) && (isklbtype(Angle, addend))) {
+		Py_INCREF(augmend);
+		((kolibaFrangleObject *)augmend)->t +=
+			((isklbtype(Frangle, addend)) ? ((kolibaFrangleObject *)addend)->t :
+			KOLIBA_AngleTurns(&((kolibaAngleObject *)addend)->a));
+		koliba_frangle_recalculate((kolibaFrangleObject *)augmend, false);
+		return augmend;
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+
+static PyNumberMethods kolibaFrangleAsNumber = {
+	.nb_add = kolibaFrangleAdd,
+	.nb_inplace_add = kolibaFrangleInPlaceAdd,
+};
+
 klbgetset(Frangle) = {
 	{"frames", (getter)kolibaFrangleGetFrames, (setter)kolibaFrangleSetFrames, "total number of frames of the frangle", NULL},
 	{"frame", (getter)kolibaFrangleGetFrame, (setter)kolibaFrangleSetFrame, "current frame of the frangle", NULL},
@@ -898,6 +935,7 @@ static PyTypeObject kolibaFrangleType = {
 	.tp_init = (initproc)kolibaFrangleInit,
 	.tp_methods = kolibaFrangleMethods,
 	.tp_getset = kolibaFrangleGetSet,
+	.tp_as_number = &kolibaFrangleAsNumber,
 };
 
 KLBO koliba_MidpointShift(PyObject *self, PyObject *args) {
