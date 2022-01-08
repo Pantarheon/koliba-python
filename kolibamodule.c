@@ -418,7 +418,7 @@ KLBO kolibaAngleInPlaceAdd(PyObject *augmend, PyObject *addend) {
 }
 
 KLBO kolibaAngleSubtract(PyObject *minuend, PyObject *subtrahend) {
-	if ((isklbtype(Angle, minuend)) && (!isklbtype(Frangle, minuend)) && (isklbtype(Angle, subtrahend))) {
+	if ((isklbtype(Angle, minuend)) && (isklbtype(Angle, subtrahend))) {
 		PyObject *difference = kolibaAngleNew((PyTypeObject*)PyObject_Type(minuend), NULL, NULL);
 		KOLIBA_AngleSubtract(&((kolibaAngleObject *)difference)->a, &((kolibaAngleObject *)minuend)->a, &((kolibaAngleObject *)subtrahend)->a);
 		if (isklbtype(Arc, minuend)) ((kolibaArcObject *)difference)->radius = ((kolibaArcObject *)minuend)->radius;
@@ -428,7 +428,7 @@ KLBO kolibaAngleSubtract(PyObject *minuend, PyObject *subtrahend) {
 }
 
 KLBO kolibaAngleInPlaceSubtract(PyObject *minuend, PyObject *subtrahend) {
-	if ((isklbtype(Angle, minuend)) && (!isklbtype(Frangle, minuend)) && (isklbtype(Angle, subtrahend))) {
+	if ((isklbtype(Angle, minuend)) && (isklbtype(Angle, subtrahend))) {
 		Py_INCREF(minuend);
 		KOLIBA_AngleSubtract(&((kolibaAngleObject *)minuend)->a, &((kolibaAngleObject *)minuend)->a, &((kolibaAngleObject *)subtrahend)->a);
 		return minuend;
@@ -909,10 +909,43 @@ KLBO kolibaFrangleInPlaceAdd(PyObject *augmend, PyObject *addend) {
 	Py_RETURN_NOTIMPLEMENTED;
 }
 
+KLBO kolibaFrangleSubtract(PyObject *minuend, PyObject *subtrahend) {
+	if ((isklbtype(Frangle, minuend)) && (isklbtype(Angle, subtrahend))) {
+		PyObject *difference = kolibaAngleNew((PyTypeObject*)PyObject_Type(minuend), NULL, NULL);
+		((kolibaFrangleObject *)difference)->t =
+			((kolibaFrangleObject *)minuend)->t +
+			((isklbtype(Frangle, subtrahend)) ? ((kolibaFrangleObject *)subtrahend)->t :
+			KOLIBA_AngleTurns(&((kolibaAngleObject *)subtrahend)->a));
+		((kolibaFrangleObject *)difference)->midpoint  = ((kolibaFrangleObject *)minuend)->midpoint;
+		((kolibaFrangleObject *)difference)->exponent  = ((kolibaFrangleObject *)minuend)->exponent;
+		((kolibaFrangleObject *)difference)->frames    = ((kolibaFrangleObject *)minuend)->frames;
+		((kolibaFrangleObject *)difference)->frame     = ((kolibaFrangleObject *)minuend)->frame;
+		((kolibaFrangleObject *)difference)->monocycle = ((kolibaFrangleObject *)minuend)->monocycle;
+		((kolibaFrangleObject *)difference)->radius    = ((kolibaFrangleObject *)minuend)->radius;
+		koliba_frangle_recalculate((kolibaFrangleObject *)difference, false);
+		return difference;
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+KLBO kolibaFrangleInPlaceSubtract(PyObject *minuend, PyObject *subtrahend) {
+	if ((isklbtype(Angle, minuend)) && (isklbtype(Angle, subtrahend))) {
+		Py_INCREF(minuend);
+		((kolibaFrangleObject *)minuend)->t +=
+			((isklbtype(Frangle, subtrahend)) ? ((kolibaFrangleObject *)subtrahend)->t :
+			KOLIBA_AngleTurns(&((kolibaAngleObject *)subtrahend)->a));
+		koliba_frangle_recalculate((kolibaFrangleObject *)minuend, false);
+		return minuend;
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
 
 static PyNumberMethods kolibaFrangleAsNumber = {
 	.nb_add = kolibaFrangleAdd,
 	.nb_inplace_add = kolibaFrangleInPlaceAdd,
+	.nb_subtract = kolibaFrangleSubtract,
+	.nb_inplace_subtract = kolibaFrangleInPlaceSubtract,
 };
 
 klbgetset(Frangle) = {
