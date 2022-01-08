@@ -285,3 +285,75 @@ of the `factor` to multiply the `angle` with before applying the math (so, if th
 >>> a.fcos(2)
 -1.0
 ```
+
+## The Arc Class
+
+The `Arc` class extends the `Angle` class from which it is derived. In addition
+to its attributes, we can assign a radius to this class. For example,
+
+```
+a = Arc(90, KAU_degrees, 1.5)
+```
+
+This creates a `90°` arc with a `1.5` radius.
+
+> We are not assigning any units to the radius because the math of this class
+> is the same for 1.5 inches as it is for 1.5 cm, or 1.5 of any other unit.
+
+We can still use all the methods of the `Angle` class as before,
+
+```
+>>> a.sin()
+1.0
+>>> a.radians
+1.5707963267948966
+>>> a.vercos()
+1.0
+```
+
+Etc. Additionally, we can calculate the `area` of the arc, its `length`, the length
+of its `chord`, and its `sagitta`:
+
+```
+>>> a.area()
+1.7671458676442586
+>>> a.length()
+2.356194490192345
+>>> a.chord()
+2.1213203435596424
+>>> a.sagitta()
+0.43933982822017864
+```
+
+If we list the directory of this class, we will see everything from `Angle` plus
+everything new in `Arc`:
+
+```
+>>> dir(Arc)
+['__add__', '__class__', '__delattr__', '__dir__', '__doc__', '__eq__', '__floordiv__', '__format__', '__ge__', '__getattribute__', '__gt__', '__hash__', '__iadd__', '__ifloordiv__', '__imul__', '__init__', '__init_subclass__', '__isub__', '__itruediv__', '__le__', '__lt__', '__mul__', '__ne__', '__new__', '__pow__', '__radd__', '__reduce__', '__reduce_ex__', '__repr__', '__rfloordiv__', '__rmul__', '__rpow__', '__rsub__', '__rtruediv__', '__setattr__', '__sizeof__', '__str__', '__sub__', '__subclasshook__', '__truediv__', 'area', 'chord', 'cos', 'degrees', 'fcos', 'fhavercos', 'fhaversin', 'fmonohavercos', 'fmonohaversin', 'fmonovercos', 'fmonoversin', 'fsin', 'fvercos', 'fversin', 'havercos', 'haversin', 'length', 'monocos', 'monocycle', 'monohavercos', 'monohaversin', 'monopolcos', 'monopolsin', 'monosin', 'monovercos', 'monoversin', 'normalize', 'pis', 'polcos', 'polsin', 'radians', 'radius', 'sagitta', 'sin', 'turns', 'vercos', 'versin']
+```
+
+That means, among other things, we can add an object of the `Arc` class to an object
+of the `Angle` class, as well an object of the `Angle` class to an object of the
+`Arc` class. The order in which we do it determines the class of the result:
+
+```
+>>> a = Arc(2, KAU_pis, 3.5)
+>>> b = Angle(90)
+>>> c = a + b
+>>> c.degrees
+450.0
+>>> c.radius
+3.5
+>>> d = b + a
+>>> d.degrees
+450.0
+>>> d.radius
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+AttributeError: 'koliba.Angle' object has no attribute 'radius'. Did you mean: 'radians'?
+```
+
+In this example `c` is an object of the `Arc` class and has inherited its `radius`
+from `a`, while `d` is an object of the `Angle` class, so it does not have a
+radius.
