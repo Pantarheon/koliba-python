@@ -710,7 +710,7 @@ KLBO kolibaChordLength(klbo(Arc,self)) {
 }
 
 KLBO kolibaArcSagitta(klbo(Arc,self)) {
-	return PyFloat_FromDouble(self->radius*KOLIBA_AngleVersine(&self->a));
+	return PyFloat_FromDouble(self->radius*KOLIBA_AngleFactorVersine(&self->a, 0.5));
 }
 
 static PyMethodDef kolibaArcMethods[] = {
