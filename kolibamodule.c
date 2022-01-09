@@ -439,9 +439,7 @@ KLBO kolibaAngleInPlaceSubtract(PyObject *minuend, PyObject *subtrahend) {
 KLBO koliba_angle_multiply(kolibaAngleObject *multiplicand, PyObject *multiplier) {
 	double factor;
 	PyObject *result;
-	if (isklbtype(Frangle, multiplicand)) {
-		Py_RETURN_NOTIMPLEMENTED;
-	}
+
 	if (PyFloat_Check(multiplier)) factor = PyFloat_AsDouble(multiplier);
 	else if (PyLong_Check(multiplier)) factor = PyLong_AsDouble(multiplier);
 	else {
@@ -464,7 +462,7 @@ KLBO kolibaAngleMultiply(PyObject *multiplicand, PyObject *multiplier) {
 KLBO kolibaAngleInPlaceMultiply(PyObject *multiplicand, PyObject *multiplier) {
 	double factor;
 
-	if ((!isklbtype(Frangle, multiplicand)) && isklbtype(Angle, multiplicand)) {
+	if (isklbtype(Angle, multiplicand)) {
 		if (PyFloat_Check(multiplier)) factor = PyFloat_AsDouble(multiplier);
 		else if (PyLong_Check(multiplier)) factor = PyLong_AsDouble(multiplier);
 		else {
@@ -872,11 +870,15 @@ KLBO kolibaFranglePolcosine(klbo(Frangle,self)) {
 	return PyFloat_FromDouble((self->monocycle) ? ((1.0+KOLIBA_AngleFactorCosine(&self->a,0.5))/2.0) : KOLIBA_AnglePolcosine(&self->a));
 }
 
-static PyMethodDef kolibaFrangleMethods[] = {
-	{"polsin", (PyCFunction)kolibaFranglePolsine, METH_NOARGS, "Return the polsine of the frangle"},
-	{"polcos", (PyCFunction)kolibaFranglePolcosine, METH_NOARGS, "Return the polcosine of the frangle"},
-	{NULL}
-};
+KLBO koliba_frangle_asnumber(kolibaFrangleObject *To, kolibaFrangleObject *From) {
+	To->midpoint  = From->midpoint;
+	To->exponent  = From->exponent;
+	To->frames    = From->frames;
+	To->frame     = From->frame;
+	To->monocycle = From->monocycle;
+	To->radius    = From->radius;
+	return koliba_frangle_recalculate(To, false);
+}
 
 KLBO kolibaFrangleAdd(PyObject *augmend, PyObject *addend) {
 	if ((isklbtype(Frangle, augmend)) && (isklbtype(Angle, addend))) {
@@ -885,14 +887,7 @@ KLBO kolibaFrangleAdd(PyObject *augmend, PyObject *addend) {
 			((kolibaFrangleObject *)augmend)->t +
 			((isklbtype(Frangle, addend)) ? ((kolibaFrangleObject *)addend)->t :
 			KOLIBA_AngleTurns(&((kolibaAngleObject *)addend)->a));
-		((kolibaFrangleObject *)sum)->midpoint  = ((kolibaFrangleObject *)augmend)->midpoint;
-		((kolibaFrangleObject *)sum)->exponent  = ((kolibaFrangleObject *)augmend)->exponent;
-		((kolibaFrangleObject *)sum)->frames    = ((kolibaFrangleObject *)augmend)->frames;
-		((kolibaFrangleObject *)sum)->frame     = ((kolibaFrangleObject *)augmend)->frame;
-		((kolibaFrangleObject *)sum)->monocycle = ((kolibaFrangleObject *)augmend)->monocycle;
-		((kolibaFrangleObject *)sum)->radius    = ((kolibaFrangleObject *)augmend)->radius;
-		koliba_frangle_recalculate((kolibaFrangleObject *)sum, false);
-		return sum;
+		return koliba_frangle_asnumber((kolibaFrangleObject *)sum, (kolibaFrangleObject *)augmend);
 	}
 	Py_RETURN_NOTIMPLEMENTED;
 }
@@ -903,8 +898,7 @@ KLBO kolibaFrangleInPlaceAdd(PyObject *augmend, PyObject *addend) {
 		((kolibaFrangleObject *)augmend)->t +=
 			((isklbtype(Frangle, addend)) ? ((kolibaFrangleObject *)addend)->t :
 			KOLIBA_AngleTurns(&((kolibaAngleObject *)addend)->a));
-		koliba_frangle_recalculate((kolibaFrangleObject *)augmend, false);
-		return augmend;
+		return koliba_frangle_recalculate((kolibaFrangleObject *)augmend, false);
 	}
 	Py_RETURN_NOTIMPLEMENTED;
 }
@@ -916,14 +910,7 @@ KLBO kolibaFrangleSubtract(PyObject *minuend, PyObject *subtrahend) {
 			((kolibaFrangleObject *)minuend)->t +
 			((isklbtype(Frangle, subtrahend)) ? ((kolibaFrangleObject *)subtrahend)->t :
 			KOLIBA_AngleTurns(&((kolibaAngleObject *)subtrahend)->a));
-		((kolibaFrangleObject *)difference)->midpoint  = ((kolibaFrangleObject *)minuend)->midpoint;
-		((kolibaFrangleObject *)difference)->exponent  = ((kolibaFrangleObject *)minuend)->exponent;
-		((kolibaFrangleObject *)difference)->frames    = ((kolibaFrangleObject *)minuend)->frames;
-		((kolibaFrangleObject *)difference)->frame     = ((kolibaFrangleObject *)minuend)->frame;
-		((kolibaFrangleObject *)difference)->monocycle = ((kolibaFrangleObject *)minuend)->monocycle;
-		((kolibaFrangleObject *)difference)->radius    = ((kolibaFrangleObject *)minuend)->radius;
-		koliba_frangle_recalculate((kolibaFrangleObject *)difference, false);
-		return difference;
+		return koliba_frangle_asnumber((kolibaFrangleObject *)difference, (kolibaFrangleObject *)minuend);
 	}
 	Py_RETURN_NOTIMPLEMENTED;
 }
@@ -934,11 +921,54 @@ KLBO kolibaFrangleInPlaceSubtract(PyObject *minuend, PyObject *subtrahend) {
 		((kolibaFrangleObject *)minuend)->t +=
 			((isklbtype(Frangle, subtrahend)) ? ((kolibaFrangleObject *)subtrahend)->t :
 			KOLIBA_AngleTurns(&((kolibaAngleObject *)subtrahend)->a));
-		koliba_frangle_recalculate((kolibaFrangleObject *)minuend, false);
-		return minuend;
+		return koliba_frangle_recalculate((kolibaFrangleObject *)minuend, false);
 	}
 	Py_RETURN_NOTIMPLEMENTED;
 }
+
+KLBO koliba_frangle_multiply(kolibaFrangleObject *multiplicand, PyObject *multiplier) {
+	double factor;
+	PyObject *result;
+
+	if (PyFloat_Check(multiplier)) factor = PyFloat_AsDouble(multiplier);
+	else if (PyLong_Check(multiplier)) factor = PyLong_AsDouble(multiplier);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+	result = kolibaAngleNew((PyTypeObject*)PyObject_Type((PyObject*)multiplicand), NULL, NULL);
+	((kolibaFrangleObject *)result)->t = multiplicand->t * factor;
+	return koliba_frangle_asnumber((kolibaFrangleObject *)result, multiplicand);
+}
+
+KLBO kolibaFrangleMultiply(PyObject *multiplicand, PyObject *multiplier) {
+	if (isklbtype(Frangle, multiplicand)) 
+		return koliba_frangle_multiply((kolibaFrangleObject *)multiplicand, multiplier);
+	else if (isklbtype(Frangle, multiplier))
+		return koliba_frangle_multiply((kolibaFrangleObject *)multiplier, multiplicand);
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+KLBO kolibaFrangleInPlaceMultiply(PyObject *multiplicand, PyObject *multiplier) {
+	double factor;
+
+	if (isklbtype(Frangle, multiplicand)) {
+		if (PyFloat_Check(multiplier)) factor = PyFloat_AsDouble(multiplier);
+		else if (PyLong_Check(multiplier)) factor = PyLong_AsDouble(multiplier);
+		else {
+			Py_RETURN_NOTIMPLEMENTED;
+		}
+		Py_INCREF(multiplicand);
+		((kolibaFrangleObject *)multiplicand)->t *= factor;
+		return koliba_frangle_recalculate((kolibaFrangleObject *)multiplicand, false);
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+static PyMethodDef kolibaFrangleMethods[] = {
+	{"polsin", (PyCFunction)kolibaFranglePolsine, METH_NOARGS, "Return the polsine of the frangle"},
+	{"polcos", (PyCFunction)kolibaFranglePolcosine, METH_NOARGS, "Return the polcosine of the frangle"},
+	{NULL}
+};
 
 
 static PyNumberMethods kolibaFrangleAsNumber = {
@@ -946,6 +976,8 @@ static PyNumberMethods kolibaFrangleAsNumber = {
 	.nb_inplace_add = kolibaFrangleInPlaceAdd,
 	.nb_subtract = kolibaFrangleSubtract,
 	.nb_inplace_subtract = kolibaFrangleInPlaceSubtract,
+	.nb_multiply = kolibaFrangleMultiply,
+	.nb_inplace_multiply = kolibaFrangleInPlaceMultiply,
 };
 
 klbgetset(Frangle) = {
