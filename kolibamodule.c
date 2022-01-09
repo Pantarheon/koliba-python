@@ -508,7 +508,7 @@ KLBO kolibaAnglePower(PyObject *base, PyObject *exponent, PyObject *normalize) {
 	}
 }
 
-KLBO kolibaInPlaceAnglePower(PyObject *base, PyObject *exponent, PyObject *normalize) {
+KLBO kolibaAngleInPlacePower(PyObject *base, PyObject *exponent, PyObject *normalize) {
 	if (PyFloat_Check(exponent))
 		return koliba_angle_power(base, PyFloat_AsDouble(exponent), normalize, true);
 	else if (PyLong_Check(exponent))
@@ -599,6 +599,7 @@ static PyNumberMethods kolibaAngleAsNumber = {
 	.nb_floor_divide = kolibaAngleFloorDivide,
 	.nb_inplace_floor_divide = kolibaAngleInPlaceFloorDivide,
 	.nb_power = kolibaAnglePower,
+	.nb_inplace_power = kolibaAngleInPlacePower,
 };
 
 static PyMethodDef kolibaAngleMethods[] = {
@@ -871,12 +872,14 @@ KLBO kolibaFranglePolcosine(klbo(Frangle,self)) {
 }
 
 KLBO koliba_frangle_asnumber(kolibaFrangleObject *To, kolibaFrangleObject *From) {
-	To->midpoint  = From->midpoint;
-	To->exponent  = From->exponent;
-	To->frames    = From->frames;
-	To->frame     = From->frame;
-	To->monocycle = From->monocycle;
-	To->radius    = From->radius;
+	if (To != From) {
+		To->midpoint  = From->midpoint;
+		To->exponent  = From->exponent;
+		To->frames    = From->frames;
+		To->frame     = From->frame;
+		To->monocycle = From->monocycle;
+		To->radius    = From->radius;
+	}
 	return koliba_frangle_recalculate(To, false);
 }
 
@@ -964,6 +967,51 @@ KLBO kolibaFrangleInPlaceMultiply(PyObject *multiplicand, PyObject *multiplier) 
 	Py_RETURN_NOTIMPLEMENTED;
 }
 
+KLBO koliba_frangle_power(PyObject *base, double exponent, PyObject *normalize, bool inplace) {
+	PyObject *power;
+	KOLIBA_ANGLE a;
+	bool normal;
+
+	if (isklbtype(Frangle, base)) {
+		if (normalize == Py_None) normal = true;
+		else if (PyBool_Check(normalize)) normal = (normalize == Py_True);
+		else if (PyLong_Check(normalize)) normal = (PyLong_AsLong(normalize) != 0);
+		else if (PyFloat_Check(normalize)) normal = (PyFloat_AsDouble(normalize) != 0.0);
+		else {Py_RETURN_NOTIMPLEMENTED;}
+		power = (inplace) ? base : kolibaAngleNew((PyTypeObject*)PyObject_Type((PyObject*)base), NULL, NULL);
+		a.angle = ((kolibaFrangleObject *)base)->t;
+		a.units = KAU_turns;
+		KOLIBA_AnglePower(&a, &a, exponent, normal);
+		// The use of KOLIBA_AngleTurns here is redundant, but futureproof (hopefully).
+		((kolibaFrangleObject *)power)->t = KOLIBA_AngleTurns(&a);
+		if (inplace) {
+			Py_INCREF(power);
+		}
+		return koliba_frangle_asnumber((kolibaFrangleObject *)power, (kolibaFrangleObject *)base);
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+KLBO kolibaFranglePower(PyObject *base, PyObject *exponent, PyObject *normalize) {
+	if (PyFloat_Check(exponent))
+		return koliba_frangle_power(base, PyFloat_AsDouble(exponent), normalize, false);
+	else if (PyLong_Check(exponent))
+		return koliba_frangle_power(base, PyLong_AsDouble(exponent), normalize, false);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+}
+
+KLBO kolibaFrangleInPlacePower(PyObject *base, PyObject *exponent, PyObject *normalize) {
+	if (PyFloat_Check(exponent))
+		return koliba_frangle_power(base, PyFloat_AsDouble(exponent), normalize, true);
+	else if (PyLong_Check(exponent))
+		return koliba_frangle_power(base, PyLong_AsDouble(exponent), normalize, true);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+}
+
 static PyMethodDef kolibaFrangleMethods[] = {
 	{"polsin", (PyCFunction)kolibaFranglePolsine, METH_NOARGS, "Return the polsine of the frangle"},
 	{"polcos", (PyCFunction)kolibaFranglePolcosine, METH_NOARGS, "Return the polcosine of the frangle"},
@@ -978,6 +1026,8 @@ static PyNumberMethods kolibaFrangleAsNumber = {
 	.nb_inplace_subtract = kolibaFrangleInPlaceSubtract,
 	.nb_multiply = kolibaFrangleMultiply,
 	.nb_inplace_multiply = kolibaFrangleInPlaceMultiply,
+	.nb_power = kolibaFranglePower,
+	.nb_inplace_power = kolibaFrangleInPlacePower,
 };
 
 klbgetset(Frangle) = {
