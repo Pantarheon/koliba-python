@@ -479,7 +479,7 @@ KLBO koliba_angle_power(PyObject *base, double exponent, PyObject *normalize, bo
 	PyObject *power;
 	bool normal;
 
-	if ((!isklbtype(Frangle, base)) && isklbtype(Angle, base)) {
+	if (isklbtype(Angle, base)) {
 		if (normalize == Py_None) normal = true;
 		else if (PyBool_Check(normalize)) normal = (normalize == Py_True);
 		else if (PyLong_Check(normalize)) normal = (PyLong_AsLong(normalize) != 0);
@@ -520,22 +520,21 @@ KLBO kolibaAngleInPlacePower(PyObject *base, PyObject *exponent, PyObject *norma
 
 KLBO koliba_angle_divide(PyObject *dividend, double divisor, bool floored, bool inplace) {
 	PyObject *result;
-	if (!isklbtype(Frangle, dividend)) {
-		if (divisor == 0.0) {
-			PyErr_Format(PyExc_ValueError, "The divisor must not be zero");
-			return NULL;
+
+	if (divisor == 0.0) {
+		PyErr_Format(PyExc_ValueError, "The divisor must not be zero");
+		return NULL;
+	}
+	if (isklbtype(Angle, dividend)) {
+		result = (inplace) ? dividend : kolibaAngleNew((PyTypeObject*)PyObject_Type((PyObject*)dividend), NULL, NULL);
+		KOLIBA_AngleDivide(&((kolibaAngleObject *)result)->a, &((kolibaAngleObject *)dividend)->a, divisor, floored);
+		if (inplace) {
+			Py_INCREF(dividend);
 		}
-		if (isklbtype(Angle, dividend)) {
-			result = (inplace) ? dividend : kolibaAngleNew((PyTypeObject*)PyObject_Type((PyObject*)dividend), NULL, NULL);
-			KOLIBA_AngleDivide(&((kolibaAngleObject *)result)->a, &((kolibaAngleObject *)dividend)->a, divisor, floored);
-			if (inplace) {
-				Py_INCREF(dividend);
-			}
-			else {
-				if (isklbtype(Arc, result)) ((kolibaArcObject *)result)->radius = ((kolibaArcObject *)dividend)->radius;
-			}
-			return result;
+		else {
+			if (isklbtype(Arc, result)) ((kolibaArcObject *)result)->radius = ((kolibaArcObject *)dividend)->radius;
 		}
+		return result;
 	}
 	Py_RETURN_NOTIMPLEMENTED;
 }
@@ -1012,6 +1011,69 @@ KLBO kolibaFrangleInPlacePower(PyObject *base, PyObject *exponent, PyObject *nor
 	}
 }
 
+KLBO koliba_frangle_divide(PyObject *dividend, double divisor, bool floored, bool inplace) {
+	PyObject *result;
+	KOLIBA_ANGLE a;
+
+	if (divisor == 0.0) {
+		PyErr_Format(PyExc_ValueError, "The divisor must not be zero");
+		return NULL;
+	}
+	if (isklbtype(Frangle, dividend)) {
+		result  = (inplace) ? dividend : kolibaAngleNew((PyTypeObject*)PyObject_Type((PyObject*)dividend), NULL, NULL);
+		a.angle = ((kolibaFrangleObject *)dividend)->t;
+		a.units = KAU_turns;
+
+		KOLIBA_AngleDivide(&a, &a, divisor, floored);
+		((kolibaFrangleObject *)result)->t = KOLIBA_AngleTurns(&a);
+		if (inplace) {
+			Py_INCREF(dividend);
+		}
+		return koliba_frangle_asnumber((kolibaFrangleObject *)result, (kolibaFrangleObject *)dividend);
+	}
+	Py_RETURN_NOTIMPLEMENTED;
+}
+
+KLBO kolibaFrangleTrueDivide(PyObject *dividend, PyObject *divisor) {
+	if (PyFloat_Check(divisor))
+		return koliba_frangle_divide(dividend, PyFloat_AsDouble(divisor), false, false);
+	else if (PyLong_Check(divisor))
+		return koliba_frangle_divide(dividend, PyLong_AsDouble(divisor), false, false);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+}
+
+KLBO kolibaFrangleInPlaceTrueDivide(PyObject *dividend, PyObject *divisor) {
+	if (PyFloat_Check(divisor))
+		return koliba_frangle_divide(dividend, PyFloat_AsDouble(divisor), false, true);
+	else if (PyLong_Check(divisor))
+		return koliba_frangle_divide(dividend, PyLong_AsDouble(divisor), false, true);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+}
+
+KLBO kolibaFrangleFloorDivide(PyObject *dividend, PyObject *divisor) {
+	if (PyFloat_Check(divisor))
+		return koliba_frangle_divide(dividend, PyFloat_AsDouble(divisor), true, false);
+	else if (PyLong_Check(divisor))
+		return koliba_frangle_divide(dividend, PyLong_AsDouble(divisor), true, false);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+}
+
+KLBO kolibaFrangleInPlaceFloorDivide(PyObject *dividend, PyObject *divisor) {
+	if (PyFloat_Check(divisor))
+		return koliba_frangle_divide(dividend, PyFloat_AsDouble(divisor), true, true);
+	else if (PyLong_Check(divisor))
+		return koliba_frangle_divide(dividend, PyLong_AsDouble(divisor), true, true);
+	else {
+		Py_RETURN_NOTIMPLEMENTED;
+	}
+}
+
 static PyMethodDef kolibaFrangleMethods[] = {
 	{"polsin", (PyCFunction)kolibaFranglePolsine, METH_NOARGS, "Return the polsine of the frangle"},
 	{"polcos", (PyCFunction)kolibaFranglePolcosine, METH_NOARGS, "Return the polcosine of the frangle"},
@@ -1026,6 +1088,10 @@ static PyNumberMethods kolibaFrangleAsNumber = {
 	.nb_inplace_subtract = kolibaFrangleInPlaceSubtract,
 	.nb_multiply = kolibaFrangleMultiply,
 	.nb_inplace_multiply = kolibaFrangleInPlaceMultiply,
+	.nb_true_divide = kolibaFrangleTrueDivide,
+	.nb_inplace_true_divide = kolibaFrangleInPlaceTrueDivide,
+	.nb_floor_divide = kolibaFrangleFloorDivide,
+	.nb_inplace_floor_divide = kolibaFrangleInPlaceFloorDivide,
 	.nb_power = kolibaFranglePower,
 	.nb_inplace_power = kolibaFrangleInPlacePower,
 };
