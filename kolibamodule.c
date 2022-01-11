@@ -147,12 +147,20 @@ static PyTypeObject kolibaAngleType;
 static PyTypeObject kolibaArcType;
 static PyTypeObject kolibaFrangleType;
 
-
-static int koliba_frangle_noset(char *property) {
-	PyErr_Format(PyExc_ValueError, "Frangle.%s is a read-only property (try setting the frame or frames instead))", property);
-	return -1;
-}
-
+ static int koliba_angle_set(klbo(Angle,self), PyObject *value, KOLIBA_ANGLEUNITS units) {
+	if (isklbtype(Frangle,self)) {
+		PyErr_Format(PyExc_ValueError, "Frangle.%s is a read-only property (try setting the t, frame, or frames instead))", kau[units]+4);
+		return -1;
+	}
+	if (PyFloat_Check(value)) self->a.angle = PyFloat_AsDouble(value);
+	else if (PyLong_Check(value)) self->a.angle = (double)PyLong_AsDouble(value);
+	else {
+		PyErr_Format(PyExc_TypeError, "The angle must be a number in %s", kau[units]+4);
+		return -1;
+	}
+	self->a.units = units;
+	return 0;
+ }
 
 klbdealloc(Angle) {
 	Py_TYPE(self)->tp_free((PyObject *)self);
@@ -184,15 +192,7 @@ KLBO kolibaAngleGetDegrees(klbo(Angle,self), void *closure) {
 }
 
 static int kolibaAngleSetDegrees(klbo(Angle,self), PyObject *value, void *closure) {
-	if (isklbtype(Frangle,self)) return koliba_frangle_noset("degrees");
-	if (PyFloat_Check(value)) self->a.angle = PyFloat_AsDouble(value);
-	else if (PyLong_Check(value)) self->a.angle = (double)PyLong_AsDouble(value);
-	else {
-		PyErr_SetString(PyExc_TypeError, "The angle must be a number in degrees");
-		return -1;
-	}
-	self->a.units = KAU_degrees;
-	return 0;
+	return koliba_angle_set(self, value, KAU_degrees);
 }
 
 KLBO kolibaAngleGetRadians(klbo(Angle,self), void *closure) {
@@ -200,15 +200,7 @@ KLBO kolibaAngleGetRadians(klbo(Angle,self), void *closure) {
 }
 
 static int kolibaAngleSetRadians(klbo(Angle,self), PyObject *value, void *closure) {
-	if (isklbtype(Frangle,self)) return koliba_frangle_noset("radians");
-	if (PyFloat_Check(value)) self->a.angle = PyFloat_AsDouble(value);
-	else if (PyLong_Check(value)) self->a.angle = (double)PyLong_AsDouble(value);
-	else {
-		PyErr_SetString(PyExc_TypeError, "The angle must be a number in radians");
-		return -1;
-	}
-	self->a.units = KAU_radians;
-	return 0;
+	return koliba_angle_set(self, value, KAU_radians);
 }
 
 KLBO kolibaAngleGetTurns(klbo(Angle,self), void *closure) {
@@ -216,15 +208,7 @@ KLBO kolibaAngleGetTurns(klbo(Angle,self), void *closure) {
 }
 
 static int kolibaAngleSetTurns(klbo(Angle,self), PyObject *value, void *closure) {
-	if (isklbtype(Frangle,self)) return koliba_frangle_noset("turns");
-	if (PyFloat_Check(value)) self->a.angle = PyFloat_AsDouble(value);
-	else if (PyLong_Check(value)) self->a.angle = (double)PyLong_AsDouble(value);
-	else {
-		PyErr_SetString(PyExc_TypeError, "The angle must be a number in turns");
-		return -1;
-	}
-	self->a.units = KAU_turns;
-	return 0;
+	return koliba_angle_set(self, value, KAU_turns);
 }
 
 KLBO kolibaAngleGetPis(klbo(Angle,self), void *closure) {
@@ -232,15 +216,7 @@ KLBO kolibaAngleGetPis(klbo(Angle,self), void *closure) {
 }
 
 static int kolibaAngleSetPis(klbo(Angle,self), PyObject *value, void *closure) {
-	if (isklbtype(Frangle,self)) return koliba_frangle_noset("pis");
-	if (PyFloat_Check(value)) self->a.angle = PyFloat_AsDouble(value);
-	else if (PyLong_Check(value)) self->a.angle = (double)PyLong_AsDouble(value);
-	else {
-		PyErr_SetString(PyExc_TypeError, "The angle must be a number in pis");
-		return -1;
-	}
-	self->a.units = KAU_pis;
-	return 0;
+	return koliba_angle_set(self, value, KAU_pis);
 }
 
 KLBO kolibaAngleSine(klbo(Angle,self)) {
